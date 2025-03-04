@@ -4,10 +4,6 @@ export function Navbar() {
   return (
     <div className="h-16 bg-black text-white flex items-center justify-between px-6 border-b border-gray-800">
       <div className="flex items-center gap-2">
-        <div className="bg-[#c1ff00] rounded-md p-1.5">
-          <span className="text-black font-bold text-xl">✕</span>
-        </div>
-        <span className="font-bold text-xl">X Wallet</span>
       </div>
 
       <div className="flex items-center gap-4">
