@@ -4,31 +4,60 @@ import { useState } from "react"
 import {
   LayoutDashboard,
   Wallet,
-  BarChart2,
-  RefreshCcw,
   Bell,
-  ShoppingBag,
-  Newspaper,
   Settings,
   LogOut,
   ArrowRight,
-  CopyPlus,
+  ChevronDown,
+  Users,
+  User,
+  UserCheck,
+  ShieldCheck,
 } from "lucide-react"
 
 export function Sidebar() {
-  const [activeItem, setActiveItem] = useState("wallet")
+  const [activeItem, setActiveItem] = useState("projects")
+  const [activeSubItem, setActiveSubItem] = useState("")
+  const [isProjectsOpen, setIsProjectsOpen] = useState(false)
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "wallet", label: "Wallet", icon: Wallet },
-    { id: "trade", label: "Trade", icon: BarChart2 },
-    { id: "exchange", label: "Exchange", icon: RefreshCcw },
+    {
+      id: "projects",
+      label: "Projects",
+      icon: Wallet,
+      hasDropdown: true,
+      subItems: [
+        { id: "employee", label: "Çalışanı olduğum", icon: User },
+        { id: "customer", label: "Müşterisi olduğum", icon: Users },
+        { id: "broker", label: "Komisyoncusu olduğum", icon: UserCheck },
+        { id: "manager", label: "Yöneticisi olduğum", icon: ShieldCheck },
+      ],
+    },
     { id: "notifications", label: "Notifications", icon: Bell, badge: 4 },
-    { id: "marketplace", label: "Marketplace", icon: ShoppingBag },
-    { id: "news", label: "News", icon: Newspaper, badge: 3 },
     { id: "settings", label: "Settings", icon: Settings },
     { id: "logout", label: "Log Out", icon: LogOut },
   ]
+
+  const toggleProjects = () => {
+    setIsProjectsOpen(!isProjectsOpen)
+  }
+
+  const handleItemClick = (itemId) => {
+    if (itemId === "projects") {
+      toggleProjects()
+    } else {
+      setActiveItem(itemId)
+      setActiveSubItem("")
+    }
+  }
+
+  const handleSubItemClick = (itemId) => {
+    setActiveSubItem(itemId)
+    setActiveItem("projects")
+    // Prevent event bubbling
+    event.stopPropagation()
+  }
 
   return (
     <div className="w-[273px] bg-black text-white flex flex-col h-full">
@@ -42,26 +71,49 @@ export function Sidebar() {
 
         <nav className="space-y-1">
           {menuItems.map((item) => (
-            <button
-              key={item.id}
-              className={`flex items-center w-full px-3 py-2.5 rounded-md text-sm ${
-                activeItem === item.id ? "bg-gray-800" : "hover:bg-gray-900"
-              } transition-colors`}
-              onClick={() => setActiveItem(item.id)}
-            >
-              <item.icon className="w-5 h-5 mr-3" />
-              <span>{item.label}</span>
-              {item.badge && (
-                <div className="ml-auto bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {item.badge}
+            <div key={item.id}>
+              <button
+                className={`flex items-center w-full px-3 py-2.5 rounded-md text-sm ${
+                  activeItem === item.id ? "bg-gray-800" : "hover:bg-gray-900"
+                } transition-colors`}
+                onClick={() => handleItemClick(item.id)}
+              >
+                <item.icon className="w-5 h-5 mr-3" />
+                <span>{item.label}</span>
+                {item.badge && (
+                  <div className="ml-auto bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {item.badge}
+                  </div>
+                )}
+                {item.hasDropdown && (
+                  <ChevronDown
+                    className={`ml-auto w-4 h-4 transition-transform ${isProjectsOpen ? "rotate-180" : ""}`}
+                  />
+                )}
+              </button>
+
+              {item.id === "projects" && isProjectsOpen && (
+                <div className="ml-7 mt-1 space-y-1">
+                  {item.subItems.map((subItem) => (
+                    <button
+                      key={subItem.id}
+                      className={`flex items-center w-full px-3 py-2 rounded-md text-sm ${
+                        activeSubItem === subItem.id ? "bg-gray-800" : "hover:bg-gray-900"
+                      } transition-colors`}
+                      onClick={(e) => handleSubItemClick(subItem.id, e)}
+                    >
+                      <subItem.icon className="w-4 h-4 mr-3" />
+                      <span>{subItem.label}</span>
+                      {activeSubItem === subItem.id && (
+                        <div className="ml-auto">
+                          <ArrowRight className="w-3 h-3" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               )}
-              {activeItem === item.id && item.id === "wallet" && (
-                <div className="ml-auto">
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              )}
-            </button>
+            </div>
           ))}
         </nav>
       </div>
