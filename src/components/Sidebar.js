@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   ArrowRight,
+  CopyPlus,
 } from "lucide-react"
 
 export function Sidebar() {
@@ -31,8 +32,8 @@ export function Sidebar() {
 
   return (
     <div className="w-[273px] bg-black text-white flex flex-col h-full">
-      <div className="p-6">
-        <div className="flex items-center gap-2 mb-8">
+      <div className="p-5">
+        <div className="flex items-center gap-2 mb-4">
           <div className="bg-[#c1ff00] rounded-md p-1.5">
             <span className="text-black font-bold text-xl">✕</span>
           </div>
@@ -65,28 +66,8 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="mt-auto mx-6 mb-6">
-        <div className="bg-[#c1ff00] rounded-xl p-6 flex flex-col items-center">
-          <div className="w-16 h-16 mb-4 flex items-center justify-center">
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M32 16L16 32L32 48M16 32H48"
-                stroke="black"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <div className="text-center text-black">
-            <h3 className="font-bold">The new update</h3>
-            <p className="text-xs mb-4">Version 3.2.0</p>
-            <button className="bg-black text-white rounded-full px-4 py-2 text-sm font-medium flex items-center">
-              Let's Go
-              <ArrowRight className="ml-1 w-4 h-4" />
-            </button>
-          </div>
-        </div>
+      <div className="mt-auto mx-2 mb-2">
+        <p className="text-xs">©2025 Stajyerler Tüm Hakları Saklıdır.</p>
       </div>
     </div>
   )
