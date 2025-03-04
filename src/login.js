@@ -2,10 +2,25 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CheckCircle, Eye, EyeOff } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { useLocation } from "react-router-dom"
+import { ToastContainer, toast } from "react-toastify"
+
+
 
 export default function LoginPage() {
+    const location = useLocation()
+
+    useEffect(() => {
+      if (location.state?.message) {
+        toast.success(location.state.message)
+      }
+    }, [location.state])
+  
+
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -13,6 +28,8 @@ export default function LoginPage() {
   })
 
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -22,13 +39,43 @@ export default function LoginPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Form submitted:", formData)
+    setLoading(true)
+
+    try {
+      const response = await fetch("http://10.33.41.153:8000/Session/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      const data = await response.json();
+
+      if (response.status === 200) {
+        console.log(data.message)
+        navigate("/", { state: { message: "Giriş başarılı!" } }) // Mesajı state ile gönder
+    } else {
+        toast.error(`Giriş Başarısız: ${data.error}`) // Hata mesajı
+        console.error("Login Başarısız:", response.status)
+      }
+    } catch (error) {
+      console.error("Hata:", error)
+    } finally {
+      setLoading(false)
+    }
   }
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#121212]">
+    <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+
       {/* Sol Taraf */}
       <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-between text-white">
         <h1 className="text-4xl font-bold tracking-tight mb-16">HOŞ GELDİNİZ</h1>

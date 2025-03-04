@@ -2,8 +2,11 @@
 
 import { useState } from "react"
 import { CheckCircle, Eye, EyeOff } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+
 
 export default function RegisterPage() {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -16,15 +19,43 @@ export default function RegisterPage() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Form submitted:", formData)
+    setLoading(true)
+
+    try {
+      const response = await fetch("http://10.33.41.153:8000/Session/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.firstName,
+          surname: formData.lastName,
+          email: formData.email,
+          phone: formData.phoneNumber,
+          password: formData.password,
+        }),
+      })
+
+      if (response.status === 200) {
+        navigate("/login", { state: { message: "Kayıt Başarılı." } }) // Mesajı state ile gönder
+      } else {
+        console.error("Kayıt başarısız:", response.status)
+      }
+    } catch (error) {
+      console.error("Hata:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

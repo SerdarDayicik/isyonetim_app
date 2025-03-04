@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import Login from './login';
 import Register from './register';
+import AnaSayfa from './anaSayfa';
 
 export default function App() {
   return (
@@ -11,7 +12,7 @@ export default function App() {
         <main>
           {/* Sayfa geçişlerinin olduğu kısım */}
           <Routes>
-            <Route path="/" element={<h2>Ana Sayfa</h2>} />
+            <Route path="/" element={<AnaSayfa />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
           </Routes>
