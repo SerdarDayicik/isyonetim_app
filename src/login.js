@@ -2,11 +2,13 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useContext } from "react"
 import { CheckCircle, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useLocation } from "react-router-dom"
 import { ToastContainer, toast } from "react-toastify"
+import { AuthContext } from "./context/AuthContext";
+
 
 
 
@@ -20,6 +22,7 @@ export default function LoginPage() {
     }, [location.state])
   
 
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: "",
@@ -58,6 +61,7 @@ export default function LoginPage() {
 
       if (response.status === 200) {
         console.log(data.message)
+        login(data.token);
         navigate("/", { state: { message: "Giriş başarılı!" } }) // Mesajı state ile gönder
     } else {
         toast.error(`Giriş Başarısız: ${data.error}`) // Hata mesajı

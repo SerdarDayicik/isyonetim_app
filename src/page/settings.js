@@ -4,7 +4,6 @@ import { useLocation } from "react-router-dom"
 import { ToastContainer, toast } from "react-toastify"
 import { useEffect, useState } from "react"
 import { Sidebar } from "../components/Sidebar"
-import { Navbar } from "../components/Navbar"
 import "../globals.css"
 import { Bell, Shield, User, Palette, HelpCircle } from "lucide-react"
 

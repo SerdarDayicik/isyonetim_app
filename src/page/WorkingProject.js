@@ -1,4 +1,3 @@
-import { useLocation } from "react-router-dom"
 import { ToastContainer } from "react-toastify"
 import { Sidebar } from "../components/Sidebar"
 import { Navbar } from "../components/Navbar"
@@ -16,7 +15,6 @@ import {
 } from "lucide-react"
 
 export default function CalisaniOldugum() {
-  const location = useLocation()
 
   // Örnek proje verileri - Yeni alanlar eklendi
   const projects = [
@@ -127,7 +125,7 @@ export default function CalisaniOldugum() {
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      <Sidebar Active="calisani-oldugum" />
+      <Sidebar Active="projects" ActiveSubItem="employee" ProjectOpen={true} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
         <div className="bg-black text-white p-5 w-full">
