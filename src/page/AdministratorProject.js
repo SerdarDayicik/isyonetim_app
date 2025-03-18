@@ -20,7 +20,9 @@ export default function AdministratorProject() {
       <Sidebar Active = "projects" ActiveSubItem = "manager" ProjectOpen = {true}/>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        <h1>Admin Oldugum Projeler</h1>
+        <div className="bg-black text-white p-5 w-full">
+          <h2 className="text-2xl font-bold">Yöneticisi Olduğum Projeler</h2>
+        </div>
       </div>
     </div>
   )

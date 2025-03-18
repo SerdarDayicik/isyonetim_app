@@ -20,7 +20,10 @@ export default function CreateProject() {
       <Sidebar Active = "settings"/>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        <h1>SETTİNGS</h1>
+        <div className="bg-black text-white p-5 w-full">
+          <h2 className="text-2xl font-bold">Settings</h2>
+        </div>
+
       </div>
     </div>
   )

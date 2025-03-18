@@ -20,7 +20,9 @@ export default function CustomerPage() {
       <Sidebar Active = "projects" ActiveSubItem = "customer" ProjectOpen = {true}/>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        <h1>Müşterisi Oldugum Projeler</h1>
+        <div className="bg-black text-white p-5 w-full">
+          <h2 className="text-2xl font-bold">Müşterisi Olduğum Projeler</h2>
+        </div>
       </div>
     </div>
   )

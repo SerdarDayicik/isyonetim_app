@@ -20,7 +20,9 @@ export default function CommissionProject() {
       <Sidebar Active = "projects" ActiveSubItem = "broker" ProjectOpen = {true}/>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        <h1>KOMİSYONCUSU Oldugum Projeler</h1>
+        <div className="bg-black text-white p-5 w-full">
+          <h2 className="text-2xl font-bold">Komisyoncusu olduğum projeler</h2>
+        </div>
       </div>
     </div>
   )

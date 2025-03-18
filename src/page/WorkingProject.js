@@ -20,7 +20,9 @@ export default function WorkingProject() {
       <Sidebar Active = "projects" ActiveSubItem = "employee" ProjectOpen = {true}/>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        <h1>Çalıştıgın Projeler</h1>
+        <div className="bg-black text-white p-5 w-full">
+          <h2 className="text-2xl font-bold">Çalışanı doluğum Projeler</h2>
+        </div>
       </div>
     </div>
   )
