@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
+  // LayoutDashboard,
   Wallet,
   Bell,
   Settings,
@@ -13,15 +14,20 @@ import {
   User,
   UserCheck,
   ShieldCheck,
+  House,
 } from "lucide-react"
 
-export function Sidebar() {
-  const [activeItem, setActiveItem] = useState("projects")
-  const [activeSubItem, setActiveSubItem] = useState("")
-  const [isProjectsOpen, setIsProjectsOpen] = useState(false)
+export function Sidebar({ Active,  ActiveSubItem = "" , ProjectOpen = false }) {
+  const navigate = useNavigate();
+
+  const [activeItem, setActiveItem] = useState(Active)
+  const [activeSubItem, setActiveSubItem] = useState(ActiveSubItem)
+  const [isProjectsOpen, setIsProjectsOpen] = useState(ProjectOpen)
 
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+
+    { id: "CreateProject", label: "Create Project", icon: House },
+    // { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     {
       id: "projects",
       label: "Projects",
@@ -51,16 +57,39 @@ export function Sidebar() {
       setActiveSubItem("")
     }
   }
+  
+  const RouteProgress = (itemId) => {
+    if(itemId === "CreateProject"){
+      navigate("/")
+    }
+    if(itemId === "settings") {
+      navigate("/settings")
+    }
+    if(itemId === "employee"){
+      navigate("/Project/WorkingProject")
+    }
+    if(itemId === "customer"){
+      navigate("/Project/CustomerPage")
+    }
+    if(itemId === "broker"){
+      navigate("/Project/CommissionProject")
+    }
+    if(itemId === "manager"){
+      navigate("/Project/AdministratorProject")
+    }
+    if(itemId === "notifications"){
+      navigate("/Project/Notification")
+    }
+  }
 
-  const handleSubItemClick = (itemId) => {
+  const handleSubItemClick = (itemId,event) => {
+    event.stopPropagation()
     setActiveSubItem(itemId)
     setActiveItem("projects")
-    // Prevent event bubbling
-    event.stopPropagation()
   }
 
   return (
-    <div className="w-[273px] bg-black text-white flex flex-col h-full">
+    <div className="w-[273px] bg-black text-white flex flex-col h-full border-r border-gray-700">
       <div className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <div className="bg-[#c1ff00] rounded-md p-1.5">
@@ -72,11 +101,16 @@ export function Sidebar() {
         <nav className="space-y-1">
           {menuItems.map((item) => (
             <div key={item.id}>
+              {/* Burası Navbarların buttonları */}
               <button
                 className={`flex items-center w-full px-3 py-2.5 rounded-md text-sm ${
                   activeItem === item.id ? "bg-gray-800" : "hover:bg-gray-900"
                 } transition-colors`}
-                onClick={() => handleItemClick(item.id)}
+                onClick={() => {
+                  handleItemClick(item.id)
+                  RouteProgress(item.id)
+                  console.log(item.id)
+                }}
               >
                 <item.icon className="w-5 h-5 mr-3" />
                 <span>{item.label}</span>
@@ -100,7 +134,11 @@ export function Sidebar() {
                       className={`flex items-center w-full px-3 py-2 rounded-md text-sm ${
                         activeSubItem === subItem.id ? "bg-gray-800" : "hover:bg-gray-900"
                       } transition-colors`}
-                      onClick={(e) => handleSubItemClick(subItem.id, e)}
+                      onClick={(e) => {
+                        handleSubItemClick(subItem.id, e)
+                        RouteProgress(subItem.id)
+                        console.log(subItem.id)
+                      }}
                     >
                       <subItem.icon className="w-4 h-4 mr-3" />
                       <span>{subItem.label}</span>
@@ -124,4 +162,3 @@ export function Sidebar() {
     </div>
   )
 }
-

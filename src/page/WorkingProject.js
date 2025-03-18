@@ -1,11 +1,11 @@
 import { useLocation } from "react-router-dom"
 import { ToastContainer, toast } from "react-toastify"
 import { useEffect } from "react"
+import { Sidebar } from "../components/Sidebar"
+import { Navbar } from "../components/Navbar"
+import "../globals.css"
 
-import { WalletDashboard } from "./components/WalletDashboard"
-import "./globals.css"
-
-export default function AnaSayfa() {
+export default function WorkingProject() {
   const location = useLocation()
 
   useEffect(() => {
@@ -15,12 +15,17 @@ export default function AnaSayfa() {
   }, [location.state])
 
   return (
-    <div className="App">
+    <div className="flex h-screen overflow-hidden bg-white">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      <WalletDashboard />
+      <Sidebar Active = "projects" ActiveSubItem = "employee" ProjectOpen = {true}/>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <h1>Çalıştıgın Projeler</h1>
+      </div>
     </div>
   )
 }
+
 
 
 
