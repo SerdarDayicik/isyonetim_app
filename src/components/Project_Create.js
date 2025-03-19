@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Search, Plus, X, User, Users } from "lucide-react"
+import { toast, ToastContainer } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 // Mock data for people search
 const mockPeople = [
-  { id: 1, name: "Ahmet Yılmaz", avatar: "https://randomuser.me/api/portraits/men/1.jpg" },
-  { id: 2, name: "Ayşe Demir", avatar: "https://randomuser.me/api/portraits/women/2.jpg" },
+  { id: 1, name: "Naka", avatar: "https://randomuser.me/api/portraits/men/1.jpg" },
+  { id: 2, name: "deneme", avatar: "https://randomuser.me/api/portraits/women/2.jpg" },
   { id: 3, name: "Mehmet Kaya", avatar: "https://randomuser.me/api/portraits/men/3.jpg" },
   { id: 4, name: "Zeynep Çelik", avatar: "https://randomuser.me/api/portraits/women/4.jpg" },
   { id: 5, name: "Mustafa Şahin", avatar: "https://randomuser.me/api/portraits/men/5.jpg" },
@@ -14,8 +16,8 @@ const mockPeople = [
 
 // Mock data for brokers search
 const mockBrokers = [
-  { id: 1, name: "Can Özdemir", avatar: "https://randomuser.me/api/portraits/men/10.jpg" },
-  { id: 2, name: "Selin Yıldız", avatar: "https://randomuser.me/api/portraits/women/11.jpg" },
+  { id: 1, name: "denemeeeeqwe", avatar: "https://randomuser.me/api/portraits/men/10.jpg" },
+  { id: 2, name: "qweqweqwe", avatar: "https://randomuser.me/api/portraits/women/11.jpg" },
   { id: 3, name: "Burak Aksoy", avatar: "https://randomuser.me/api/portraits/men/12.jpg" },
 ]
 
@@ -92,23 +94,48 @@ export function ProjectCreate() {
   }
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
+    // Prepare data for API in the required format
     const projectData = {
       project_name: projectName,
-      project_description: projectDescription,
       price: Number.parseFloat(price),
-      invited_people: invitedPeople.map((p) => p.id),
-      invited_brokers: invitedBrokers.map((b) => b.id),
+      description: projectDescription,
+      invitees: invitedPeople.map((p) => p.name),
+      brokers: invitedBrokers.map((b) => b.name),
     }
 
-    console.log("Project data:", projectData)
-    // Here you would typically send this data to your API
+    try {
+      const response = await fetch("http://10.33.41.153:8000/Project/CreateProject", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(projectData),
+      })
+
+      if (response.ok) {
+        toast.success("Proje başarıyla oluşturuldu!")
+        // Reset form after successful submission
+        setProjectName("")
+        setProjectDescription("")
+        setPrice("")
+        setInvitedPeople([])
+        setInvitedBrokers([])
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(`Hata: ${errorData.message || "Bir hata oluştu"}`)
+      }
+    } catch (error) {
+      toast.error("İstek gönderilirken bir hata oluştu!")
+      console.error("Error:", error)
+    }
   }
 
   return (
     <div className="flex-1 overflow-auto bg-white w-full h-full">
+      <ToastContainer position="top-right" />
       <div className="w-full h-full">
         <div className="bg-black text-white p-5 w-full">
           <h2 className="text-2xl font-bold">Yeni Proje Oluştur</h2>
