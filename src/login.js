@@ -1,28 +1,12 @@
 "use client"
-
-import type React from "react"
-
-import { useState, useEffect, useContext } from "react"
+import { useState, useContext } from "react"
 import { CheckCircle, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { useLocation } from "react-router-dom"
-import { ToastContainer, toast } from "react-toastify"
-import { AuthContext } from "./context/AuthContext";
-
-
-
+import { toast } from "react-toastify"
+import { AuthContext } from "./context/AuthContext"
 
 export default function LoginPage() {
-    const location = useLocation()
-
-    useEffect(() => {
-      if (location.state?.message) {
-        toast.success(location.state.message)
-      }
-    }, [location.state])
-  
-
-  const { login } = useContext(AuthContext);
+  const { login } = useContext(AuthContext)
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: "",
@@ -33,7 +17,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -41,7 +25,7 @@ export default function LoginPage() {
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
 
@@ -57,28 +41,35 @@ export default function LoginPage() {
         }),
       })
 
-      const data = await response.json();
+      const data = await response.json()
 
       if (response.status === 200) {
-        console.log(data.message)
-        login(data.token);
-        navigate("/", { state: { message: "Giriş başarılı!" } }) // Mesajı state ile gönder
-    } else {
-        toast.error(`Giriş Başarısız: ${data.error}`) // Hata mesajı
-        console.error("Login Başarısız:", response.status)
+        // Başarılı giriş
+        const success = login(data.token)
+
+        if (success) {
+          // Önce bildirimi göster, sonra yönlendir
+          toast.success("Başarıyla giriş yapıldı!")
+
+          // Bildirim gösterildikten sonra yönlendirme için kısa bir gecikme
+          setTimeout(() => {
+            navigate("/")
+          }, 300)
+        }
+      } else {
+        // Sadece hata durumunda bildirim göster
+        toast.error(`Giriş Başarısız: ${data.error}`)
       }
     } catch (error) {
       console.error("Hata:", error)
+      toast.error("Bağlantı hatası! Lütfen daha sonra tekrar deneyin.")
     } finally {
       setLoading(false)
     }
   }
 
-
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#121212]">
-    <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-
       {/* Sol Taraf */}
       <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-between text-white">
         <h1 className="text-4xl font-bold tracking-tight mb-16">HOŞ GELDİNİZ</h1>
@@ -176,9 +167,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-[#c1ff00] text-white py-4 px-6 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#121212] text-lg font-medium"
+              disabled={loading}
+              className="w-full bg-[#c1ff00] text-black py-4 px-6 rounded-xl hover:bg-[#a8e600] transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#121212] text-lg font-medium"
             >
-              Giriş Yap
+              {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
             </button>
 
             <div className="relative my-8">
@@ -229,3 +221,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

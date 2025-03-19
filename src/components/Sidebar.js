@@ -80,6 +80,9 @@ export function Sidebar({ Active,  ActiveSubItem = "" , ProjectOpen = false }) {
     if(itemId === "notifications"){
       navigate("/Project/Notification")
     }
+    if(itemId === "logout"){
+      navigate("/")
+    }
   }
 
   const handleSubItemClick = (itemId,event) => {

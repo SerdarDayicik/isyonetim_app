@@ -1,83 +1,72 @@
-import { createContext, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+"use client"
 
-export const AuthContext = createContext();
+import { createContext, useState, useEffect } from "react"
+import { toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+
+export const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Yeni loading state
-  const navigate = useNavigate();
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   // Token'i çözümleme fonksiyonu
   const parseJwt = (token) => {
     try {
-      const base64Url = token.split(".")[1];
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-      return JSON.parse(atob(base64));
+      const base64Url = token.split(".")[1]
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
+      return JSON.parse(atob(base64))
     } catch (e) {
-      console.error("Token çözümleme hatası:", e);
-      return null;
+      console.error("Token çözümleme hatası:", e)
+      return null
     }
-  };
+  }
 
   // Token geçerlilik süresini kontrol eden fonksiyon
   const isTokenValid = (token) => {
-    const decoded = parseJwt(token);
-    if (!decoded) return false;
-    const isValid = decoded.exp * 1000 > Date.now();
-    console.log("Token geçerlilik kontrolü:", isValid, "(exp:", decoded.exp * 1000, ", now:", Date.now(), ")");
-    return isValid;
-  };
+    const decoded = parseJwt(token)
+    if (!decoded) return false
+    return decoded.exp * 1000 > Date.now()
+  }
 
   // Sayfa yenilendiğinde token kontrolü yap
   useEffect(() => {
-    let token = localStorage.getItem("token");
-    console.log("Sayfa yüklendi, token:", token);
+    let token = localStorage.getItem("token")
     if (token) {
-      token = token.replace(/^"(.*)"$/, '$1'); // Fazladan tırnak varsa temizle
+      token = token.replace(/^"(.*)"$/, "$1") // Fazladan tırnak varsa temizle
       if (isTokenValid(token)) {
-        const decoded = parseJwt(token);
-        setUser({ user_id: decoded.user_id, role: decoded.role });
-        console.log("Geçerli token bulundu, kullanıcı setlendi:", decoded);
+        const decoded = parseJwt(token)
+        setUser({ user_id: decoded.user_id, role: decoded.role })
       } else {
-        console.log("Token geçersiz veya süresi dolmuş.");
-        logout();
+        // Geçersiz token - sessizce temizle
+        localStorage.removeItem("token")
+        setUser(null)
       }
-    } else { 
-      console.log("Token bulunamadı.");
-      logout();
     }
-    setLoading(false); // Kontrol tamamlandı, loading bitti
-  }, []); // Bağımlılıklar listesi boş olduğundan sadece ilk renderda çalışır.
+    setLoading(false)
+  }, [])
 
   // Kullanıcı giriş yapınca
   const login = (jwtToken) => {
-    console.log("Giriş token'ı:", jwtToken);
     if (isTokenValid(jwtToken)) {
-      const decoded = parseJwt(jwtToken);
-      setUser({ user_id: decoded.user_id, role: decoded.role });
-      localStorage.setItem("token", jwtToken);
+      const decoded = parseJwt(jwtToken)
+      setUser({ user_id: decoded.user_id, role: decoded.role })
+      localStorage.setItem("token", jwtToken)
+      return true
     } else {
-      console.error("Girişte geçersiz token!");
-      logout();
+      // Geçersiz token durumunda hata bildir
+      toast.error("Geçersiz giriş bilgileri!")
+      logout()
+      return false
     }
-  };
+  }
 
-  // Kullanıcı çıkış yapınca
+  // Kullanıcı çıkış yapınca - bildirim gösterme işlevi kaldırıldı
   const logout = () => {
-    console.log("Çıkış yapılıyor...");
-    setUser(null);
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+    setUser(null)
+    localStorage.removeItem("token")
+  }
 
-  return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {loading ? (
-        <div>Loading...</div> // Sayfa yükleniyorsa loading mesajı
-      ) : (
-        children // Sayfa yüklenmişse, çocuk componentleri göster
-      )}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, login, logout, loading }}>{children}</AuthContext.Provider>
 }
+
