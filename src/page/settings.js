@@ -141,9 +141,6 @@ export default function Settings() {
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
       <Sidebar Active="settings" />
       <div className="flex flex-col flex-1 overflow-hidden">
-       
-
-
         <div className="flex flex-1 overflow-hidden">
           {/* Settings sidebar */}
           <div className="w-64 border-r bg-gray-50 overflow-y-auto">
@@ -199,13 +196,106 @@ export default function Settings() {
 }
 
 function ProfileSettings() {
+  const [userData, setUserData] = useState({
+    email: "",
+    name: "",
+    surname: "",
+    phone: "",
+    profile_photo_url: null,
+    role: "",
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Random avatar URLs for default profile photo
+  const randomAvatars = [
+    "https://randomuser.me/api/portraits/men/1.jpg",
+    "https://randomuser.me/api/portraits/women/2.jpg",
+    "https://randomuser.me/api/portraits/men/3.jpg",
+    "https://randomuser.me/api/portraits/women/4.jpg",
+    "https://randomuser.me/api/portraits/men/5.jpg",
+  ]
+
+  // Get a random avatar from the list
+  const getRandomAvatar = () => {
+    const randomIndex = Math.floor(Math.random() * randomAvatars.length)
+    return randomAvatars[randomIndex]
+  }
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true)
+        // Get token from localStorage
+        let token = localStorage.getItem("token")
+
+        if (!token) {
+          throw new Error("Token bulunamadı")
+        }
+
+        // Remove quotes if present
+        token = token.replace(/^"(.*)"$/, "$1")
+
+        const response = await fetch("http://10.33.41.153:8000/Session/user_info", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error("Kullanıcı bilgileri alınamadı")
+        }
+
+        const data = await response.json()
+        setUserData(data)
+      } catch (err) {
+        console.error("Kullanıcı bilgileri yüklenirken hata:", err)
+        setError(err.message)
+        toast.error("Kullanıcı bilgileri yüklenemedi: " + err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500">
+        <p>Hata: {error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          Yeniden Dene
+        </button>
+      </div>
+    )
+  }
+
+  // Use profile photo if available, otherwise use random avatar
+  const profilePhoto = userData.profile_photo_url || getRandomAvatar()
+
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-medium">Profil Ayarları</h3>
 
       <div className="flex items-center space-x-4">
         <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-          <img src="/placeholder.svg?height=80&width=80" alt="Profile" className="w-full h-full object-cover" />
+          <img src={profilePhoto || "/placeholder.svg"} alt="Profile" className="w-full h-full object-cover" />
         </div>
         <div>
           <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Fotoğraf Değiştir</button>
@@ -217,8 +307,9 @@ function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Ad</label>
           <input
             type="text"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            defaultValue="Ahmet"
+            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+            value={userData.name}
+            disabled
           />
         </div>
 
@@ -226,8 +317,9 @@ function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Soyad</label>
           <input
             type="text"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            defaultValue="Yılmaz"
+            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+            value={userData.surname}
+            disabled
           />
         </div>
 
@@ -235,8 +327,9 @@ function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-1">E-posta</label>
           <input
             type="email"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            defaultValue="ahmet.yilmaz@example.com"
+            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+            value={userData.email}
+            disabled
           />
         </div>
 
@@ -244,23 +337,30 @@ function ProfileSettings() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
           <input
             type="tel"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            defaultValue="+90 555 123 4567"
+            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+            value={userData.phone}
+            disabled
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
-        <textarea
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-          rows="3"
-          defaultValue="İstanbul, Türkiye"
-        ></textarea>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Kullanıcı Rolü</label>
+        <input
+          type="text"
+          className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 cursor-not-allowed"
+          value={userData.role === "user" ? "Kullanıcı" : userData.role === "admin" ? "Yönetici" : userData.role}
+          disabled
+        />
       </div>
 
       <div className="pt-4">
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Değişiklikleri Kaydet</button>
+        <button className="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed opacity-70">
+          Değişiklikleri Kaydet
+        </button>
+        <p className="text-sm text-gray-500 mt-2">
+          Profil bilgilerinizi değiştirmek için lütfen yönetici ile iletişime geçin.
+        </p>
       </div>
     </div>
   )
@@ -570,5 +670,4 @@ function HelpSupport() {
     </div>
   )
 }
-
 
