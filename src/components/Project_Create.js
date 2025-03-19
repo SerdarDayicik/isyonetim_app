@@ -9,7 +9,7 @@ import "react-toastify/dist/ReactToastify.css"
 const mockPeople = [
   { id: 1, name: "Naka", avatar: "https://randomuser.me/api/portraits/men/1.jpg" },
   { id: 2, name: "deneme", avatar: "https://randomuser.me/api/portraits/women/2.jpg" },
-  { id: 3, name: "Mehmet Kaya", avatar: "https://randomuser.me/api/portraits/men/3.jpg" },
+  { id: 3, name: "serdar", avatar: "https://randomuser.me/api/portraits/men/3.jpg" },
   { id: 4, name: "Zeynep Çelik", avatar: "https://randomuser.me/api/portraits/women/4.jpg" },
   { id: 5, name: "Mustafa Şahin", avatar: "https://randomuser.me/api/portraits/men/5.jpg" },
 ]
