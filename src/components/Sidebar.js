@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"
 import {
-  // LayoutDashboard,
   Wallet,
   Bell,
   Settings,
@@ -14,18 +13,17 @@ import {
   User,
   UserCheck,
   ShieldCheck,
-  House,
+  HomeIcon as House,
 } from "lucide-react"
 
-export function Sidebar({ Active,  ActiveSubItem = "" , ProjectOpen = false }) {
-  const navigate = useNavigate();
+export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
+  const navigate = useNavigate()
 
   const [activeItem, setActiveItem] = useState(Active)
   const [activeSubItem, setActiveSubItem] = useState(ActiveSubItem)
   const [isProjectsOpen, setIsProjectsOpen] = useState(ProjectOpen)
 
   const menuItems = [
-
     { id: "CreateProject", label: "Create Project", icon: House },
     // { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     {
@@ -57,35 +55,35 @@ export function Sidebar({ Active,  ActiveSubItem = "" , ProjectOpen = false }) {
       setActiveSubItem("")
     }
   }
-  
+
   const RouteProgress = (itemId) => {
-    if(itemId === "CreateProject"){
+    if (itemId === "CreateProject") {
       navigate("/")
     }
-    if(itemId === "settings") {
+    if (itemId === "settings") {
       navigate("/settings")
     }
-    if(itemId === "employee"){
+    if (itemId === "employee") {
       navigate("/Project/WorkingProject")
     }
-    if(itemId === "customer"){
+    if (itemId === "customer") {
       navigate("/Project/CustomerPage")
     }
-    if(itemId === "broker"){
+    if (itemId === "broker") {
       navigate("/Project/CommissionProject")
     }
-    if(itemId === "manager"){
+    if (itemId === "manager") {
       navigate("/Project/AdministratorProject")
     }
-    if(itemId === "notifications"){
+    if (itemId === "notifications") {
       navigate("/Project/Notification")
     }
-    if(itemId === "logout"){
+    if (itemId === "logout") {
       navigate("/")
     }
   }
 
-  const handleSubItemClick = (itemId,event) => {
+  const handleSubItemClick = (itemId, event) => {
     event.stopPropagation()
     setActiveSubItem(itemId)
     setActiveItem("projects")
@@ -94,11 +92,8 @@ export function Sidebar({ Active,  ActiveSubItem = "" , ProjectOpen = false }) {
   return (
     <div className="w-[273px] bg-black text-white flex flex-col h-full border-r border-gray-700">
       <div className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="bg-[#c1ff00] rounded-md p-1.5">
-            <span className="text-black font-bold text-xl">✕</span>
-          </div>
-          <span className="font-bold text-xl">X Wallet</span>
+        <div className="flex justify-center mb-2">
+          <img src="/SASOFT (1).svg" alt="SASOFT Logo" className="h-24" />
         </div>
 
         <nav className="space-y-1">
@@ -165,3 +160,4 @@ export function Sidebar({ Active,  ActiveSubItem = "" , ProjectOpen = false }) {
     </div>
   )
 }
+
