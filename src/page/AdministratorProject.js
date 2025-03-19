@@ -2,9 +2,10 @@
 
 import { useLocation } from "react-router-dom"
 import { ToastContainer, toast } from "react-toastify"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "../components/Sidebar"
 import { Navbar } from "../components/Navbar"
+import { ProjectDetailsModal } from "../components/project-details-modal"
 import "../globals.css"
 import {
   BarChart2,
@@ -13,7 +14,6 @@ import {
   Clock,
   DollarSign,
   FileText,
-  MessageSquare,
   MoreHorizontal,
   Plus,
   Search,
@@ -23,6 +23,8 @@ import {
 
 export default function AdministratorProject() {
   const location = useLocation()
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     if (location.state?.message) {
@@ -172,6 +174,11 @@ export default function AdministratorProject() {
   const totalBudget = projects.reduce((total, project) => total + project.budget, 0)
   const totalSpent = projects.reduce((total, project) => total + project.spent, 0)
   const totalTeamMembers = projects.reduce((total, project) => total + project.teamSize, 0)
+
+  const openProjectDetails = (project) => {
+    setSelectedProject(project)
+    setIsModalOpen(true)
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
@@ -408,7 +415,10 @@ export default function AdministratorProject() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                      <button
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        onClick={() => openProjectDetails(project)}
+                      >
                         <FileText className="w-4 h-4 mr-1" />
                         Detaylar
                       </button>
@@ -423,11 +433,6 @@ export default function AdministratorProject() {
                         Raporlar
                       </button>
 
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100">
-                        <MessageSquare className="w-4 h-4 mr-1" />
-                        Mesajlar
-                      </button>
-
                       <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
                         <Settings className="w-4 h-4 mr-1" />
                         Ayarlar
@@ -440,6 +445,9 @@ export default function AdministratorProject() {
           </div>
         </div>
       </div>
+
+      {/* Proje Detayları Modal */}
+      <ProjectDetailsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} project={selectedProject} />
     </div>
   )
 }

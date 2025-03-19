@@ -2,14 +2,17 @@
 
 import { useLocation } from "react-router-dom"
 import { ToastContainer, toast } from "react-toastify"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "../components/Sidebar"
 import { Navbar } from "../components/Navbar"
+import { ProjectDetailsModal } from "../components/project-details-modal"
 import "../globals.css"
-import { Calendar, Clock, FileText, MessageCircle, Percent, Search, User, Users } from "lucide-react"
+import { Calendar, Clock, FileText, Percent, Search, User, Users } from "lucide-react"
 
 export default function CommissionProject() {
   const location = useLocation()
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     if (location.state?.message) {
@@ -145,6 +148,11 @@ export default function CommissionProject() {
     .filter((project) => project.paymentStatus === "ödendi")
     .reduce((total, project) => total + project.commissionAmount, 0)
   const pendingCommission = totalCommission - paidCommission
+
+  const openProjectDetails = (project) => {
+    setSelectedProject(project)
+    setIsModalOpen(true)
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
@@ -295,14 +303,12 @@ export default function CommissionProject() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                      <button
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        onClick={() => openProjectDetails(project)}
+                      >
                         <FileText className="w-4 h-4 mr-1" />
                         Detaylar
-                      </button>
-
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
-                        <MessageCircle className="w-4 h-4 mr-1" />
-                        Mesajlar
                       </button>
 
                       <button className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100">
@@ -317,6 +323,9 @@ export default function CommissionProject() {
           </div>
         </div>
       </div>
+
+      {/* Proje Detayları Modal */}
+      <ProjectDetailsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} project={selectedProject} />
     </div>
   )
 }

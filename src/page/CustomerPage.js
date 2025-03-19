@@ -2,14 +2,19 @@
 
 import { useLocation } from "react-router-dom"
 import { ToastContainer, toast } from "react-toastify"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Sidebar } from "../components/Sidebar"
 import { Navbar } from "../components/Navbar"
+import { ProjectDetailsModal } from "../components/project-details-modal"
+import { InvoiceModal } from "../components/invoice-modal"
 import "../globals.css"
-import { Calendar, Clock, DollarSign, Download, FileText, Search, User } from "lucide-react"
+import { Calendar, Clock, DollarSign, FileText, Search, User } from "lucide-react"
 
 export default function CustomerPage() {
   const location = useLocation()
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
 
   useEffect(() => {
     if (location.state?.message) {
@@ -113,6 +118,16 @@ export default function CustomerPage() {
     }
   }
 
+  const openProjectDetails = (project) => {
+    setSelectedProject(project)
+    setIsDetailsModalOpen(true)
+  }
+
+  const openInvoiceModal = (project) => {
+    setSelectedProject(project)
+    setIsInvoiceModalOpen(true)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
@@ -205,20 +220,19 @@ export default function CustomerPage() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                      <button
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        onClick={() => openProjectDetails(project)}
+                      >
                         <FileText className="w-4 h-4 mr-1" />
                         Detaylar
                       </button>
 
-                      {project.hasDocuments && (
-                        <button className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
-                          <Download className="w-4 h-4 mr-1" />
-                          Dosyalar
-                        </button>
-                      )}
-
                       {project.hasInvoice && (
-                        <button className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100">
+                        <button
+                          className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100"
+                          onClick={() => openInvoiceModal(project)}
+                        >
                           <FileText className="w-4 h-4 mr-1" />
                           Fatura
                         </button>
@@ -231,6 +245,20 @@ export default function CustomerPage() {
           </div>
         </div>
       </div>
+
+      {/* Proje Detayları Modal */}
+      <ProjectDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        project={selectedProject}
+      />
+
+      {/* Fatura Modal */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        project={selectedProject}
+      />
     </div>
   )
 }

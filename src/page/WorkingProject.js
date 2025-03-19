@@ -1,20 +1,20 @@
+"use client"
+
+import { useLocation } from "react-router-dom"
 import { ToastContainer } from "react-toastify"
+import { useState } from "react"
 import { Sidebar } from "../components/Sidebar"
 import { Navbar } from "../components/Navbar"
+import { ProjectDetailsModal } from "../components/project-details-modal"
+import { TeamModal } from "../components/team-modal"
 import "../globals.css"
-import {
-  Calendar,
-  CheckCircle,
-  Clock,
-  DollarSign,
-  FileText,
-  MessageSquare,
-  MoreHorizontal,
-  Search,
-  Users,
-} from "lucide-react"
+import { Calendar, CheckCircle, Clock, DollarSign, FileText, MoreHorizontal, Search, Users } from "lucide-react"
 
 export default function CalisaniOldugum() {
+  const location = useLocation()
+  const [selectedProject, setSelectedProject] = useState(null)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
 
   // Örnek proje verileri - Yeni alanlar eklendi
   const projects = [
@@ -122,10 +122,20 @@ export default function CalisaniOldugum() {
     },
   ]
 
+  const openProjectDetails = (project) => {
+    setSelectedProject(project)
+    setIsDetailsModalOpen(true)
+  }
+
+  const openTeamModal = (project) => {
+    setSelectedProject(project)
+    setIsTeamModalOpen(true)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      <Sidebar Active="projects" ActiveSubItem="employee" ProjectOpen={true} />
+      <Sidebar Active="calisani-oldugum" />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
         <div className="bg-black text-white p-5 w-full">
@@ -262,19 +272,20 @@ export default function CalisaniOldugum() {
 
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2 mt-4">
-                    <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                    <button
+                      className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                      onClick={() => openProjectDetails(project)}
+                    >
                       <FileText className="w-4 h-4 mr-1" />
                       Detaylar
                     </button>
 
-                    <button className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
+                    <button
+                      className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
+                      onClick={() => openTeamModal(project)}
+                    >
                       <Users className="w-4 h-4 mr-1" />
                       Ekip
-                    </button>
-
-                    <button className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100">
-                      <MessageSquare className="w-4 h-4 mr-1" />
-                      Mesajlar
                     </button>
                   </div>
                 </div>
@@ -283,6 +294,16 @@ export default function CalisaniOldugum() {
           </div>
         </div>
       </div>
+
+      {/* Proje Detayları Modal */}
+      <ProjectDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        project={selectedProject}
+      />
+
+      {/* Ekip Bilgileri Modal */}
+      <TeamModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} project={selectedProject} />
     </div>
   )
 }
