@@ -79,7 +79,7 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
       navigate("/Project/Notification")
     }
     if (itemId === "logout") {
-      navigate("/")
+      navigate("/logout")
     }
   }
 
