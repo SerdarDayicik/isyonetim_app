@@ -5,23 +5,8 @@ import { Search, Plus, X, User, Users } from "lucide-react"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 
-// Mock data for people search
-const mockPeople = [
-  { id: 1, name: "Naka", avatar: "https://randomuser.me/api/portraits/men/1.jpg" },
-  { id: 2, name: "deneme", avatar: "https://randomuser.me/api/portraits/women/2.jpg" },
-  { id: 3, name: "serdar", avatar: "https://randomuser.me/api/portraits/men/3.jpg" },
-  { id: 4, name: "Zeynep Çelik", avatar: "https://randomuser.me/api/portraits/women/4.jpg" },
-  { id: 5, name: "Mustafa Şahin", avatar: "https://randomuser.me/api/portraits/men/5.jpg" },
-]
-
-// Mock data for brokers search
-const mockBrokers = [
-  { id: 1, name: "denemeeeeqwe", avatar: "https://randomuser.me/api/portraits/men/10.jpg" },
-  { id: 2, name: "qweqweqwe", avatar: "https://randomuser.me/api/portraits/women/11.jpg" },
-  { id: 3, name: "Burak Aksoy", avatar: "https://randomuser.me/api/portraits/men/12.jpg" },
-]
-
 export function ProjectCreate() {
+  const [users, setUsers] = useState([])
   const [projectName, setProjectName] = useState("")
   const [projectDescription, setProjectDescription] = useState("")
   const [price, setPrice] = useState("")
@@ -38,15 +23,44 @@ export function ProjectCreate() {
   const peopleSearchRef = useRef(null)
   const brokerSearchRef = useRef(null)
 
+  // Fetch users from API
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch("http://10.33.41.153:8000/Session/user_list")
+        if (response.ok) {
+          const data = await response.json()
+          // Add an id to each user for easier tracking
+          const usersWithId = data.map((user, index) => ({
+            ...user,
+            id: index + 1,
+            avatar:
+              user.profile_photo_url ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`,
+          }))
+          setUsers(usersWithId)
+        } else {
+          console.error("Failed to fetch users")
+          toast.error("Kullanıcı listesi yüklenemedi!")
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error)
+        toast.error("Kullanıcı listesi yüklenemedi!")
+      }
+    }
+
+    fetchUsers()
+  }, [])
+
   // Filter people based on search term
-  const filteredPeople = mockPeople.filter(
+  const filteredPeople = users.filter(
     (person) =>
       person.name.toLowerCase().includes(peopleSearch.toLowerCase()) &&
       !invitedPeople.some((invited) => invited.id === person.id),
   )
 
   // Filter brokers based on search term
-  const filteredBrokers = mockBrokers.filter(
+  const filteredBrokers = users.filter(
     (broker) =>
       broker.name.toLowerCase().includes(brokerSearch.toLowerCase()) &&
       !invitedBrokers.some((invited) => invited.id === broker.id),
@@ -297,7 +311,10 @@ export function ProjectCreate() {
                           >
                             <div className="flex items-center">
                               <img
-                                src={broker.avatar || "/placeholder.svg"}
+                                src={
+                                  broker.avatar ||
+                                  `https://ui-avatars.com/api/?name=${encodeURIComponent(broker.name) || "/placeholder.svg"}&background=random`
+                                }
                                 alt={broker.name}
                                 className="w-10 h-10 rounded-full mr-3 border border-gray-200"
                               />
