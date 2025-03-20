@@ -76,7 +76,7 @@ export default function LoginPage() {
 
         <div className="flex-grow flex items-center justify-center mb-16">
           <div className="bg-[#1c1c1c] rounded-3xl w-full max-w-lg aspect-square p-8">
-            <img src="/register_img.jpg" alt="İllüstrasyon" className="w-full h-full object-cover rounded-2xl" />
+            <img src="/LOGİN.svg" alt="İllüstrasyon" className="w-full h-full object-cover rounded-2xl" />
           </div>
         </div>
 
