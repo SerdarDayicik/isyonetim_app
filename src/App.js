@@ -14,6 +14,7 @@ import AdministratorProject from "./page/AdministratorProject"
 import CommissionProject from "./page/CommissionProject"
 import Notification from "./page/Notifications"
 import { AuthProvider, AuthContext } from "./context/AuthContext"
+import Home from "./page/Home"
 
 // 🔒 **Özel (Private) Sayfalar İçin Koruma**
 function PrivateRoute({ children }) {
@@ -73,16 +74,17 @@ function LogoutRoute() {
       hasShownNotification.current = true
     }
 
-    // Kısa bir gecikme ile yönlendir
+    // 5 saniye beklemeden sonra yönlendir
     const timer = setTimeout(() => {
       navigate("/login", { replace: true })
-    }, 300)
+    }, 5000)
 
     return () => clearTimeout(timer)
   }, [logout, navigate])
 
   return <div>Çıkış yapılıyor...</div>
 }
+
 
 // 📢 **Toast Mesajlarını Sayfalarda Yakala**
 function ToastListener() {
@@ -115,6 +117,14 @@ export default function App() {
           {/* Ana sayfa ve korumalı rotalar */}
           <Route
             path="/"
+            element={
+              <PrivateRoute>
+                <CreateProject />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/CreateProject"
             element={
               <PrivateRoute>
                 <CreateProject />

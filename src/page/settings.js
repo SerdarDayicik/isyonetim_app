@@ -18,6 +18,7 @@ export default function Settings() {
     sms: false,
   })
 
+
   useEffect(() => {
     if (location.state?.message) {
       toast.success(location.state.message)
@@ -135,11 +136,20 @@ export default function Settings() {
         return <ProfileSettings />
     }
   }
+      // Token'ı localStorage'dan al
+      const token = localStorage.getItem("token")
+  
+      // Token varsa, JWT'den role bilgisini çıkar
+      const role = token ? JSON.parse(atob(token.split('.')[1]))?.role : null
+      
+      useEffect(() => {
+        console.log("Role bilgisi: ", role)
+      }, [role])
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      <Sidebar Active="settings" />
+      <Sidebar Active="settings" role={role} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <div className="flex flex-1 overflow-hidden">
           {/* Settings sidebar */}

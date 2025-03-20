@@ -102,10 +102,20 @@ export default function Notification() {
     toast.success("Tüm bildirimler okundu olarak işaretlendi")
   }
 
+    // Token'ı localStorage'dan al
+    const token = localStorage.getItem("token")
+
+    // Token varsa, JWT'den role bilgisini çıkar
+    const role = token ? JSON.parse(atob(token.split('.')[1]))?.role : null
+    
+    useEffect(() => {
+      console.log("Role bilgisi: ", role)
+    }, [role])
+
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      <Sidebar Active="notifications" />
+      <Sidebar Active="notifications" role={role}/>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
         <div className="bg-black text-white p-5 w-full">

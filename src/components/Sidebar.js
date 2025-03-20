@@ -1,6 +1,4 @@
-"use client"
-
-import { useState } from "react"
+import { useState, } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Wallet,
@@ -13,10 +11,10 @@ import {
   User,
   UserCheck,
   ShieldCheck,
-  HomeIcon as House,
+  HomeIcon as House, // Ana sayfa için ikon
 } from "lucide-react"
 
-export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
+export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false, role }) {
   const navigate = useNavigate()
 
   const [activeItem, setActiveItem] = useState(Active)
@@ -24,8 +22,14 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
   const [isProjectsOpen, setIsProjectsOpen] = useState(ProjectOpen)
 
   const menuItems = [
-    { id: "CreateProject", label: "Create Project", icon: House },
-    // { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    // Eğer adminse, "Home" öğesini göstermiyoruz.
+    ...(role !== "admin"
+      ? [{ id: "home", label: "Ana Sayfa", icon: House }]  // sadece normal kullanıcılar için
+      : []),
+        // Admin yalnızca "CreateProject" öğesini görebilir
+        ...(role === "admin"
+          ? [{ id: "CreateProject", label: "Create Project", icon: House, adminOnly: true }]
+          : []),
     {
       id: "projects",
       label: "Projects",
@@ -35,7 +39,7 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
         { id: "employee", label: "Çalışanı olduğum", icon: User },
         { id: "customer", label: "Müşterisi olduğum", icon: Users },
         { id: "broker", label: "Komisyoncusu olduğum", icon: UserCheck },
-        { id: "manager", label: "Yöneticisi olduğum", icon: ShieldCheck },
+        { id: "manager", label: "Yöneticisi olduğum", icon: ShieldCheck, adminOnly: true },
       ],
     },
     { id: "notifications", label: "Notifications", icon: Bell, badge: 4 },
@@ -57,8 +61,11 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
   }
 
   const RouteProgress = (itemId) => {
+    if (itemId === "home") {
+      navigate("/") // Ana sayfa rotası
+    }
     if (itemId === "CreateProject") {
-      navigate("/")
+      navigate("/CreateProject")
     }
     if (itemId === "settings") {
       navigate("/settings")
@@ -97,60 +104,66 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
         </div>
 
         <nav className="space-y-1">
-          {menuItems.map((item) => (
-            <div key={item.id}>
-              {/* Burası Navbarların buttonları */}
-              <button
-                className={`flex items-center w-full px-3 py-2.5 rounded-md text-sm ${
-                  activeItem === item.id ? "bg-gray-800" : "hover:bg-gray-900"
-                } transition-colors`}
-                onClick={() => {
-                  handleItemClick(item.id)
-                  RouteProgress(item.id)
-                  console.log(item.id)
-                }}
-              >
-                <item.icon className="w-5 h-5 mr-3" />
-                <span>{item.label}</span>
-                {item.badge && (
-                  <div className="ml-auto bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {item.badge}
+          {menuItems.map((item) => {
+            // Admin kullanıcı için "Home" öğesini render etmiyoruz
+            return (
+              <div key={item.id}>
+                <button
+                  className={`flex items-center w-full px-3 py-2.5 rounded-md text-sm ${
+                    activeItem === item.id ? "bg-gray-800" : "hover:bg-gray-900"
+                  } transition-colors`}
+                  onClick={() => {
+                    handleItemClick(item.id)
+                    RouteProgress(item.id)
+                  }}
+                >
+                  <item.icon className="w-5 h-5 mr-3" />
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <div className="ml-auto bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {item.badge}
+                    </div>
+                  )}
+                  {item.hasDropdown && (
+                    <ChevronDown
+                      className={`ml-auto w-4 h-4 transition-transform ${isProjectsOpen ? "rotate-180" : ""}`}
+                    />
+                  )}
+                </button>
+
+                {item.id === "projects" && isProjectsOpen && (
+                  <div className="ml-7 mt-1 space-y-1">
+                    {item.subItems.map((subItem) => {
+                      if (subItem.adminOnly && role !== "admin") {
+                        return null
+                      }
+
+                      return (
+                        <button
+                          key={subItem.id}
+                          className={`flex items-center w-full px-3 py-2 rounded-md text-sm ${
+                            activeSubItem === subItem.id ? "bg-gray-800" : "hover:bg-gray-900"
+                          } transition-colors`}
+                          onClick={(e) => {
+                            handleSubItemClick(subItem.id, e)
+                            RouteProgress(subItem.id)
+                          }}
+                        >
+                          <subItem.icon className="w-4 h-4 mr-3" />
+                          <span>{subItem.label}</span>
+                          {activeSubItem === subItem.id && (
+                            <div className="ml-auto">
+                              <ArrowRight className="w-3 h-3" />
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
-                {item.hasDropdown && (
-                  <ChevronDown
-                    className={`ml-auto w-4 h-4 transition-transform ${isProjectsOpen ? "rotate-180" : ""}`}
-                  />
-                )}
-              </button>
-
-              {item.id === "projects" && isProjectsOpen && (
-                <div className="ml-7 mt-1 space-y-1">
-                  {item.subItems.map((subItem) => (
-                    <button
-                      key={subItem.id}
-                      className={`flex items-center w-full px-3 py-2 rounded-md text-sm ${
-                        activeSubItem === subItem.id ? "bg-gray-800" : "hover:bg-gray-900"
-                      } transition-colors`}
-                      onClick={(e) => {
-                        handleSubItemClick(subItem.id, e)
-                        RouteProgress(subItem.id)
-                        console.log(subItem.id)
-                      }}
-                    >
-                      <subItem.icon className="w-4 h-4 mr-3" />
-                      <span>{subItem.label}</span>
-                      {activeSubItem === subItem.id && (
-                        <div className="ml-auto">
-                          <ArrowRight className="w-3 h-3" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </nav>
       </div>
 
@@ -160,4 +173,3 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false }) {
     </div>
   )
 }
-
