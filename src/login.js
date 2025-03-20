@@ -69,53 +69,53 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#121212]">
-      {/* Sol Taraf */}
-      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-between text-white">
-        <h1 className="text-4xl font-bold tracking-tight mb-16">HOŞ GELDİNİZ</h1>
+    <div className="flex flex-col md:flex-row h-screen bg-[#121212] overflow-hidden">
+      {/* Sol Taraf - Daha kompakt hale getirildi */}
+      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-between text-white h-full">
+        <h1 className="text-4xl font-bold tracking-tight mb-8">HOŞ GELDİNİZ</h1>
 
-        <div className="flex-grow flex items-center justify-center mb-16">
-          <div className="bg-[#1c1c1c] rounded-3xl w-full max-w-lg aspect-square p-8">
+        <div className="flex-grow flex items-center justify-center mb-8">
+          <div className="bg-[#1c1c1c] rounded-3xl w-full max-w-md aspect-square p-6">
             <img src="/LOGİN.svg" alt="İllüstrasyon" className="w-full h-full object-cover rounded-2xl" />
           </div>
         </div>
 
-        <div className="space-y-8">
-          <p className="text-gray-400 text-lg">
+        <div className="space-y-4">
+          <p className="text-gray-400 text-base">
             Hesabınıza giriş yaparak özel içeriklere erişebilir, topluluğumuzla etkileşime geçebilir ve tüm özelliklere
             tam erişim sağlayabilirsiniz.
           </p>
 
-          <div className="grid grid-cols-4 gap-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Özel İçerikler</span>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Özel İçerikler</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Kişisel Panel</span>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Kişisel Panel</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Etkinlik Katılımı</span>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Etkinlik Katılımı</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Topluluk Erişimi</span>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Topluluk Erişimi</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Sağ Taraf - Form */}
-      <div className="w-full md:w-1/2 p-8 md:p-16 border-l border-gray-800 bg-[#121212]">
-        <div className="max-w-xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-12">
+      <div className="w-full md:w-1/2 p-8 md:p-12 border-l border-gray-800 bg-[#121212] flex items-center">
+        <div className="max-w-xl mx-auto w-full">
+          <h2 className="text-4xl font-bold text-white mb-8">
             Giriş Yap
             <div className="h-1 w-16 bg-blue-500 mt-2"></div>
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-8 mt-32">
+          <form onSubmit={handleSubmit} className="space-y-6 mt-8">
             <div>
               <input
                 type="email"
@@ -173,7 +173,7 @@ export default function LoginPage() {
               {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
             </button>
 
-            <div className="relative my-8">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-800"></div>
               </div>
@@ -185,7 +185,7 @@ export default function LoginPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 px-6 py-4 border border-gray-800 rounded-xl hover:bg-[#1c1c1c] transition-colors text-white"
+                className="flex items-center justify-center gap-2 px-6 py-3 border border-gray-800 rounded-xl hover:bg-[#1c1c1c] transition-colors text-white"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -197,7 +197,7 @@ export default function LoginPage() {
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 px-6 py-4 border border-gray-800 rounded-xl hover:bg-[#1c1c1c] transition-colors text-white"
+                className="flex items-center justify-center gap-2 px-6 py-3 border border-gray-800 rounded-xl hover:bg-[#1c1c1c] transition-colors text-white"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -209,7 +209,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <p className="text-center text-sm text-gray-400">
+            <p className="text-center text-sm text-gray-400 mt-4">
               Hesabınız yok mu?{" "}
               <a href="/register" className="text-blue-500 hover:underline">
                 Hemen kayıt olun

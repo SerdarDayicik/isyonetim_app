@@ -1,9 +1,10 @@
 "use client"
 
+import React from "react"
+
 import { useState } from "react"
 import { CheckCircle, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -20,7 +21,6 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -59,54 +59,54 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#121212]">
-      {/* Sol Taraf */}
-      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-between text-white">
-        <h1 className="text-4xl font-bold tracking-tight mb-16">HOŞ GELDİNİZ</h1>
+    <div className="flex flex-col md:flex-row h-screen bg-[#121212] overflow-hidden">
+      {/* Sol Taraf - Daha kompakt hale getirildi */}
+      <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-between text-white h-full">
+        <h1 className="text-4xl font-bold tracking-tight mb-8">HOŞ GELDİNİZ</h1>
 
-        <div className="flex-grow flex items-center justify-center mb-16">
-          <div className="bg-[#1c1c1c] rounded-3xl w-full max-w-lg aspect-square p-8">
+        <div className="flex-grow flex items-center justify-center mb-8">
+          <div className="bg-[#1c1c1c] rounded-3xl w-full max-w-md aspect-square p-6">
             <img src="/register_img.jpg" alt="İllüstrasyon" className="w-full h-full object-cover rounded-2xl" />
           </div>
         </div>
 
-        <div className="space-y-8">
-          <p className="text-gray-400 text-lg">
+        <div className="space-y-4">
+          <p className="text-gray-400 text-base">
             Hesabınıza giriş yaparak özel içeriklere erişebilir, topluluğumuzla etkileşime geçebilir ve tüm özelliklere
             tam erişim sağlayabilirsiniz.
           </p>
 
-          <div className="grid grid-cols-4 gap-6">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Özel İçerikler</span>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Özel İçerikler</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Kişisel Panel</span>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Kişisel Panel</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Etkinlik Katılımı</span>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Etkinlik Katılımı</span>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="text-blue-500 h-5 w-5 flex-shrink-0" />
-              <span className="text-gray-300 text-sm">Topluluk Erişimi</span>
+            <div className="flex items-center gap-1">
+              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <span className="text-gray-300 text-xs">Topluluk Erişimi</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Sağ Taraf - Form */}
-      <div className="w-full md:w-1/2 p-8 md:p-16 border-l border-gray-800 bg-[#121212]">
-        <div className="max-w-xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-12">
+      <div className="w-full md:w-1/2 p-8 md:p-12 border-l border-gray-800 bg-[#121212] flex items-center">
+        <div className="max-w-xl mx-auto w-full">
+          <h2 className="text-4xl font-bold text-white mb-6">
             Hesap Oluştur
             <div className="h-1 w-16 bg-blue-500 mt-2"></div>
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <input
                   type="text"
@@ -145,7 +145,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <input
                   type="text"
@@ -231,12 +231,12 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#121212]"
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#121212] mt-4"
             >
               Kayıt Ol
             </button>
 
-            <p className="text-center text-sm text-gray-400">
+            <p className="text-center text-sm text-gray-400 mt-4">
               Zaten bir hesabınız var mı?{" "}
               <a href="/login" className="text-blue-500 hover:underline">
                 Giriş yapın
