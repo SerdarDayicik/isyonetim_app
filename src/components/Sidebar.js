@@ -27,7 +27,7 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false, role 
       ? [{ id: "home", label: "Ana Sayfa", icon: House }]  // sadece normal kullanıcılar için
       : []),
         // Admin yalnızca "CreateProject" öğesini görebilir
-        ...(role === "admin"
+    ...(role === "admin"
           ? [{ id: "CreateProject", label: "Create Project", icon: House, adminOnly: true }]
           : []),
     {
