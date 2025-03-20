@@ -88,19 +88,19 @@ export default function LoginPage() {
 
           <div className="grid grid-cols-4 gap-4">
             <div className="flex items-center gap-1">
-              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <CheckCircle className="text-[#c1ff00] h-4 w-4 flex-shrink-0" />
               <span className="text-gray-300 text-xs">Özel İçerikler</span>
             </div>
             <div className="flex items-center gap-1">
-              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <CheckCircle className="text-[#c1ff00] h-4 w-4 flex-shrink-0" />
               <span className="text-gray-300 text-xs">Kişisel Panel</span>
             </div>
             <div className="flex items-center gap-1">
-              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <CheckCircle className="text-[#c1ff00] h-4 w-4 flex-shrink-0" />
               <span className="text-gray-300 text-xs">Etkinlik Katılımı</span>
             </div>
             <div className="flex items-center gap-1">
-              <CheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+              <CheckCircle className="text-[#c1ff00] h-4 w-4 flex-shrink-0" />
               <span className="text-gray-300 text-xs">Topluluk Erişimi</span>
             </div>
           </div>
@@ -112,7 +112,7 @@ export default function LoginPage() {
         <div className="max-w-xl mx-auto w-full">
           <h2 className="text-4xl font-bold text-white mb-8">
             Giriş Yap
-            <div className="h-1 w-16 bg-blue-500 mt-2"></div>
+            <div className="h-1 w-16 bg-[#c1ff00] mt-2"></div>
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-6 mt-8">
@@ -125,7 +125,7 @@ export default function LoginPage() {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-6 py-4 bg-[#1c1c1c] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                className="w-full px-6 py-4 bg-[#1c1c1c] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#c1ff00] text-lg"
               />
             </div>
 
@@ -138,7 +138,7 @@ export default function LoginPage() {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-6 py-4 bg-[#1c1c1c] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                className="w-full px-6 py-4 bg-[#1c1c1c] border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#c1ff00] text-lg"
               />
               <button
                 type="button"
@@ -156,11 +156,11 @@ export default function LoginPage() {
                   name="rememberMe"
                   checked={formData.rememberMe}
                   onChange={handleChange}
-                  className="h-4 w-4 rounded border-gray-800 bg-[#1c1c1c] text-blue-500 focus:ring-blue-500 focus:ring-offset-[#121212]"
+                  className="h-4 w-4 rounded border-gray-800 bg-[#1c1c1c] text-[#c1ff00] focus:ring-[#c1ff00] focus:ring-offset-[#121212]"
                 />
                 <span className="ml-2 text-sm text-gray-300">Beni hatırla</span>
               </label>
-              <a href="https://www.google.com" className="text-sm text-blue-500 hover:underline">
+              <a href="https://www.google.com" className="text-sm text-[#c1ff00] hover:underline">
                 Şifremi unuttum
               </a>
             </div>
@@ -168,7 +168,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#c1ff00] text-black py-4 px-6 rounded-xl hover:bg-[#a8e600] transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#121212] text-lg font-medium"
+              className="w-full bg-[#c1ff00] text-black py-4 px-6 rounded-xl hover:bg-[#a8e600] transition-colors focus:outline-none focus:ring-2 focus:ring-[#c1ff00] focus:ring-offset-2 focus:ring-offset-[#121212] text-lg font-medium"
             >
               {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
             </button>
@@ -211,7 +211,7 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-gray-400 mt-4">
               Hesabınız yok mu?{" "}
-              <a href="/register" className="text-blue-500 hover:underline">
+              <a href="/register" className="text-[#c1ff00] hover:underline">
                 Hemen kayıt olun
               </a>
             </p>
