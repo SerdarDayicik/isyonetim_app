@@ -30,7 +30,7 @@ export default function CalisaniOldugum() {
           return
         }
 
-        const response = await fetch("http://10.33.41.222:8000/Project/ViewAssignment", {
+        const response = await fetch("http://10.33.41.153:8000/Project/ViewAssignment", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
