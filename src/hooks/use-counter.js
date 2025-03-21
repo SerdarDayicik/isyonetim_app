@@ -1,52 +1,67 @@
-import { useState, useEffect } from 'react';
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
 
 export const useCounter = (end, duration = 1000, start = 0) => {
-  const [count, setCount] = useState(start);
-  
+  const [count, setCount] = useState(start)
+  const [targetValue, setTargetValue] = useState(end)
+
+  // setValue metodu ekleyelim
+  const setValue = useCallback((newValue) => {
+    setTargetValue(newValue)
+  }, [])
+
   useEffect(() => {
-    if (end === undefined || end === null) return;
-    
-    // Eğer end değeri 0 ise, direkt 0 olarak ayarla
-    if (end === 0) {
-      setCount(0);
-      return;
+    setTargetValue(end)
+  }, [end])
+
+  useEffect(() => {
+    if (targetValue === undefined || targetValue === null) return
+
+    // Eğer targetValue değeri 0 ise, direkt 0 olarak ayarla
+    if (targetValue === 0) {
+      setCount(0)
+      return
     }
-    
+
     // Animasyon için başlangıç zamanı
-    let startTime = null;
-    const startValue = start;
-    
+    let startTime = null
+    const startValue = count
+
     // Animasyon fonksiyonu
     const animate = (timestamp) => {
-      if (!startTime) startTime = timestamp;
-      const progress = timestamp - startTime;
-      
+      if (!startTime) startTime = timestamp
+      const progress = timestamp - startTime
+
       // Animasyon ilerlemesi (0-1 arası)
-      const progressRatio = Math.min(progress / duration, 1);
-      
+      const progressRatio = Math.min(progress / duration, 1)
+
       // Easing fonksiyonu (yavaşlayarak artma efekti)
-      const easedProgress = progressRatio === 1 ? 1 : 1 - Math.pow(2, -10 * progressRatio);
-      
+      const easedProgress = progressRatio === 1 ? 1 : 1 - Math.pow(2, -10 * progressRatio)
+
       // Mevcut değeri hesapla
-      const currentValue = startValue + (end - startValue) * easedProgress;
-      
+      const currentValue = startValue + (targetValue - startValue) * easedProgress
+
       // State'i güncelle
-      setCount(currentValue);
-      
+      setCount(currentValue)
+
       // Animasyon tamamlanmadıysa devam et
       if (progressRatio < 1) {
-        requestAnimationFrame(animate);
+        requestAnimationFrame(animate)
       }
-    };
-    
+    }
+
     // Animasyonu başlat
-    requestAnimationFrame(animate);
-    
+    const animationFrame = requestAnimationFrame(animate)
+
     // Cleanup
     return () => {
-      startTime = null;
-    };
-  }, [end, duration, start]);
-  
-  return count;
-};
+      cancelAnimationFrame(animationFrame)
+      startTime = null
+    }
+  }, [targetValue, duration])
+
+  // Değeri ve setValue metodunu döndür
+  return { value: count, setValue }
+}
+
