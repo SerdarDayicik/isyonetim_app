@@ -6,6 +6,9 @@ import { useEffect, useState } from "react"
 import { Sidebar } from "../components/Sidebar"
 import { Navbar } from "../components/Navbar"
 import { ProjectDetailsModal } from "../components/project-details-modal"
+import { TeamModalManager } from "../components/team-modal-manager"
+import { ReportsModal } from "../components/reports-modal"
+import { SettingsModal } from "../components/settings-modal"
 import "../globals.css"
 import {
   BarChart2,
@@ -24,7 +27,10 @@ import {
 export default function AdministratorProject() {
   const location = useLocation()
   const [selectedProject, setSelectedProject] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
+  const [isReportsModalOpen, setIsReportsModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
 
   useEffect(() => {
     if (location.state?.message) {
@@ -177,17 +183,33 @@ export default function AdministratorProject() {
 
   const openProjectDetails = (project) => {
     setSelectedProject(project)
-    setIsModalOpen(true)
+    setIsDetailsModalOpen(true)
   }
-    // Token'ı localStorage'dan al
-    const token = localStorage.getItem("token")
 
-    // Token varsa, JWT'den role bilgisini çıkar
-    const role = token ? JSON.parse(atob(token.split('.')[1]))?.role : null
-    
-    useEffect(() => {
-      console.log("Role bilgisi: ", role)
-    }, [role])
+  const openTeamModal = (project) => {
+    setSelectedProject(project)
+    setIsTeamModalOpen(true)
+  }
+
+  const openReportsModal = (project) => {
+    setSelectedProject(project)
+    setIsReportsModalOpen(true)
+  }
+
+  const openSettingsModal = (project) => {
+    setSelectedProject(project)
+    setIsSettingsModalOpen(true)
+  }
+
+  // Token'ı localStorage'dan al
+  const token = localStorage.getItem("token")
+
+  // Token varsa, JWT'den role bilgisini çıkar
+  const role = token ? JSON.parse(atob(token.split(".")[1]))?.role : null
+
+  useEffect(() => {
+    console.log("Role bilgisi: ", role)
+  }, [role])
 
   return (
     <div className="flex h-screen overflow-hidden bg-white">
@@ -432,17 +454,26 @@ export default function AdministratorProject() {
                         Detaylar
                       </button>
 
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
+                      <button
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100"
+                        onClick={() => openTeamModal(project)}
+                      >
                         <Users className="w-4 h-4 mr-1" />
                         Ekip
                       </button>
 
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-md hover:bg-purple-100">
+                      <button
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 rounded-md hover:bg-purple-100"
+                        onClick={() => openReportsModal(project)}
+                      >
                         <BarChart2 className="w-4 h-4 mr-1" />
                         Raporlar
                       </button>
 
-                      <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                      <button
+                        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                        onClick={() => openSettingsModal(project)}
+                      >
                         <Settings className="w-4 h-4 mr-1" />
                         Ayarlar
                       </button>
@@ -456,7 +487,28 @@ export default function AdministratorProject() {
       </div>
 
       {/* Proje Detayları Modal */}
-      <ProjectDetailsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} project={selectedProject} />
+      <ProjectDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        project={selectedProject}
+      />
+
+      {/* Ekip Modal */}
+      <TeamModalManager isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} project={selectedProject} />
+
+      {/* Raporlar Modal */}
+      <ReportsModal
+        isOpen={isReportsModalOpen}
+        onClose={() => setIsReportsModalOpen(false)}
+        project={selectedProject}
+      />
+
+      {/* Ayarlar Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        project={selectedProject}
+      />
     </div>
   )
 }
