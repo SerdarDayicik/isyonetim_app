@@ -16,6 +16,8 @@ import { Calendar, Clock, FileText, Percent, Search, User, Users } from "lucide-
 import { CommissionModal } from "../components/commission-modal"
 
 export default function CommissionProject() {
+  const API_KEY = process.env.REACT_APP_API_URL
+
   const location = useLocation()
   const [selectedProject, setSelectedProject] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -47,7 +49,7 @@ export default function CommissionProject() {
       try {
         setIsLoading(true)
 
-        const response = await fetch("http://10.33.41.153:8000/Project/ViewCommission", {
+        const response = await fetch(`${API_KEY}/Project/ViewCommission`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

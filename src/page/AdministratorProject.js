@@ -26,6 +26,8 @@ import {
 import { InvoiceModal } from "../components/invoice-modal"
 
 export default function AdministratorProject() {
+  const API_KEY = process.env.REACT_APP_API_URL
+
   const location = useLocation()
   const [selectedProject, setSelectedProject] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -54,7 +56,7 @@ export default function AdministratorProject() {
       try {
         setIsLoading(true)
 
-        const response = await fetch("http://10.33.41.153:8000/Project/AdminViewProjects", {
+        const response = await fetch(`${API_KEY}/Project/AdminViewProjects`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -6,6 +6,8 @@ import { Calendar, DollarSign, FileText, Users, CheckCircle, Clock, Briefcase, S
 
 export function ProjectCreate() {
   // API'den çekilecek kullanıcılar için state
+  const API_KEY = process.env.REACT_APP_API_URL
+
   const [users, setUsers] = useState([])
 
   // formData state'ine komisyoncu bilgisini ekleyin
@@ -42,7 +44,7 @@ export function ProjectCreate() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch("http://10.33.41.153:8000/Session/user_list")
+        const response = await fetch(`${API_KEY}/Session/user_list`)
         if (response.ok) {
           const data = await response.json()
           // Her kullanıcıya id ekle

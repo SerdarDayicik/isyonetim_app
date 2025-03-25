@@ -13,6 +13,8 @@ import "../globals.css"
 import { Calendar, CheckCircle, Clock, DollarSign, FileText, MoreHorizontal, Search, Users } from 'lucide-react'
 
 export default function CalisaniOldugum() {
+  const API_KEY = process.env.REACT_APP_API_URL
+
   const location = useLocation()
   const [selectedProject, setSelectedProject] = useState(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
@@ -34,7 +36,7 @@ export default function CalisaniOldugum() {
           return
         }
 
-        const response = await fetch("http://10.33.41.153:8000/Project/ViewAssignment", {
+        const response = await fetch(`${API_KEY}/Project/ViewAssignment`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -62,7 +64,7 @@ export default function CalisaniOldugum() {
           client: "Müşteri", // Mock data as client info isn't provided
           teamSize: project.worker_count,
           tasksCompleted: Math.round(project.state_id * 6), // Mock task completion based on state
-          totalTasks: 30, // Mock total tasks
+          totalTasks: 10, // Mock total tasks
           lastActivity: "Bugün", // Mock last activity
           role: "Proje Çalışanı", // Default role
           state_id: project.state_id

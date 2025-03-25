@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "react-toastify"
 import { AuthContext } from "./context/AuthContext"
 
+const API_KEY = process.env.REACT_APP_API_URL
+
+
 export default function LoginPage() {
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()
@@ -30,7 +33,8 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("http://10.33.41.153:8000/Session/login", {
+      console.log(API_KEY)
+      const response = await fetch(`${API_KEY}/Session/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

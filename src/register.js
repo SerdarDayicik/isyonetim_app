@@ -6,6 +6,8 @@ import { useState } from "react"
 import { CheckCircle, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
+const API_KEY = process.env.REACT_APP_API_URL
+
 export default function RegisterPage() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
@@ -32,7 +34,7 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("http://10.33.41.153:8000/Session/register", {
+      const response = await fetch(`${API_KEY}/Session/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

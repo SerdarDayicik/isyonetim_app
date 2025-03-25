@@ -8,6 +8,7 @@ import "../globals.css"
 import { Bell, Shield, User, Palette, HelpCircle } from "lucide-react"
 
 export default function Settings() {
+  
   const location = useLocation()
   const [activeTab, setActiveTab] = useState("profile")
   const [darkMode, setDarkMode] = useState(false)
@@ -206,6 +207,8 @@ export default function Settings() {
 }
 
 function ProfileSettings() {
+  const API_KEY = process.env.REACT_APP_API_URL
+
   const [userData, setUserData] = useState({
     email: "",
     name: "",
@@ -246,7 +249,7 @@ function ProfileSettings() {
         // Remove quotes if present
         token = token.replace(/^"(.*)"$/, "$1")
 
-        const response = await fetch("http://10.33.41.153:8000/Session/user_info", {
+        const response = await fetch(`${API_KEY}/Session/user_info`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
