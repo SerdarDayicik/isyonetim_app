@@ -100,7 +100,9 @@ export function Sidebar({ Active, ActiveSubItem = "", ProjectOpen = false, role 
     <div className="w-[273px] bg-black text-white flex flex-col h-full border-r border-gray-700">
       <div className="p-5">
         <div className="flex justify-center mb-2">
-          <img src="logo.png" alt="SASOFT Logo" className="h-18"/>
+        <a href="/">
+          <img src="/logo.png" alt="Logo" />
+        </a>
         </div>
 
         <nav className="space-y-1">
