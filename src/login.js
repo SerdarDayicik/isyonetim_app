@@ -7,7 +7,7 @@ import { AuthContext } from "./context/AuthContext"
 
 const API_KEY = process.env.REACT_APP_API_URL
 
-
+console.log(API_KEY)
 export default function LoginPage() {
   const { login } = useContext(AuthContext)
   const navigate = useNavigate()

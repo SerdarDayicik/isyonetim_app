@@ -49,7 +49,7 @@ export default function CommissionProject() {
       try {
         setIsLoading(true)
 
-        const response = await fetch(`${API_KEY}/Project/ViewCommission`, {
+        const response = await fetch(`${API_KEY}/Commission/view_commission`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

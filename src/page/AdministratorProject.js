@@ -56,7 +56,7 @@ export default function AdministratorProject() {
       try {
         setIsLoading(true)
 
-        const response = await fetch(`${API_KEY}/Project/AdminViewProjects`, {
+        const response = await fetch(`${API_KEY}/Admin/admin_view_projects`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

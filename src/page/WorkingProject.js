@@ -36,7 +36,7 @@ export default function CalisaniOldugum() {
           return
         }
 
-        const response = await fetch(`${API_KEY}/Project/ViewAssignment`, {
+        const response = await fetch(`${API_KEY}/Admin/view_assignment`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -61,7 +61,7 @@ export default function Home() {
     setError(null)
 
     try {
-      const apiUrl = "http://10.33.41.181:8000/Session/user_list"
+      const apiUrl = "http://10.33.41.222:8000/User/get_users"
 
       const response = await fetch(apiUrl, {
         method: "GET",

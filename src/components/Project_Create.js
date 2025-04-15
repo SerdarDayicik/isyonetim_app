@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useContext } from "react"
 import { toast } from "react-toastify"
 import { Calendar, DollarSign, FileText, Users, CheckCircle, Clock, Briefcase, Search, X } from "lucide-react"
+import { AuthContext } from "../context/AuthContext"
 
 export function ProjectCreate() {
   // API'den çekilecek kullanıcılar için state
@@ -10,7 +11,7 @@ export function ProjectCreate() {
 
   const [users, setUsers] = useState([])
 
-  // formData state'ine komisyoncu bilgisini ekleyin
+  // formData state'ini güncelleyin ve tasks ekleyin
   const [formData, setFormData] = useState({
     projectName: "",
     description: "",
@@ -21,7 +22,8 @@ export function ProjectCreate() {
     priority: "orta",
     projectType: "web",
     teamMembers: [],
-    broker: "", // Komisyoncu bilgisi için yeni alan
+    broker: "", 
+    tasks: [] // Görevler için yeni alan
   })
 
   const [selectedTeamMembers, setSelectedTeamMembers] = useState([])
@@ -40,11 +42,30 @@ export function ProjectCreate() {
   const teamSearchRef = useRef(null)
   const brokerSearchRef = useRef(null)
 
+  // Görevler için yeni state'ler ekleyin
+  const [tasks, setTasks] = useState([])
+  const [newTaskName, setNewTaskName] = useState("")
+  const [newTaskDescription, setNewTaskDescription] = useState("") // Yeni açıklama alanı
+  const [newTaskDifficulty, setNewTaskDifficulty] = useState("orta") // Yeni zorluk alanı
+  const [newTaskStartDate, setNewTaskStartDate] = useState("") // Yeni başlangıç tarihi
+  const [newTaskEndDate, setNewTaskEndDate] = useState("") // Yeni bitiş tarihi
+  const [newSubtasks, setNewSubtasks] = useState([{ 
+    name: "", 
+    assignee: null,
+    description: "",
+    startDate: "",
+    endDate: "",
+    difficulty: "orta"
+  }])
+
+  // AuthContext'ten token alınması
+  const { token } = useContext(AuthContext)
+
   // API'den kullanıcıları çek
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(`${API_KEY}/Session/user_list`)
+        const response = await fetch(`${API_KEY}/User/get_users`)
         if (response.ok) {
           const data = await response.json()
           // Her kullanıcıya id ekle
@@ -185,22 +206,29 @@ export function ProjectCreate() {
     setIsLoading(true)
 
     try {
-      // API için veri hazırla
+      // localStorage'dan token'ı al
+      const token = localStorage.getItem("token")
+      
+      if (!token) {
+        toast.error("Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.")
+        return
+      }
+
+      // Proje API için veri hazırla
       const projectData = {
         project_name: formData.projectName,
         price: Number.parseFloat(formData.budget),
         description: formData.description,
         invitees: selectedTeamMembers.map((member) => member.name),
         brokers: selectedBroker ? [selectedBroker.name] : [],
-        // Diğer alanları da ekleyebilirsiniz
         start_date: formData.startDate,
         deadline: formData.deadline,
         priority: formData.priority,
         project_type: formData.projectType,
       }
 
-      // API isteği
-      const response = await fetch("http://10.33.41.153:8000/Project/CreateProject", {
+      // Proje oluşturma API isteği
+      const projectResponse = await fetch("http://10.33.41.222:8000/Project/create_project", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -208,30 +236,152 @@ export function ProjectCreate() {
         body: JSON.stringify(projectData),
       })
 
-      if (response.ok) {
-        toast.success("Proje başarıyla oluşturuldu!")
-        // Formu sıfırla
-        setFormData({
-          projectName: "",
-          description: "",
-          client: "",
-          startDate: "",
-          deadline: "",
-          budget: "",
-          priority: "orta",
-          projectType: "web",
-          teamMembers: [],
-          broker: "",
-        })
-        setSelectedTeamMembers([])
-        setSelectedBroker(null)
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        toast.error(`Hata: ${errorData.message || "Bir hata oluştu"}`)
+      // Proje yanıtını kontrol et
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.json().catch(() => ({}))
+        throw new Error(errorData.message || "Proje oluşturulurken bir hata oluştu")
       }
+
+      // Project ID'yi al
+      const projectResult = await projectResponse.json()
+      const projectId = projectResult.project_id
+      
+      console.log("Proje ID:", projectId)
+
+      // Şimdi her görev için API isteği yap ve task_id'leri sakla
+      if (tasks.length > 0) {
+        // Task ID'leri ve ilgili alt görevleri takip etmek için bir dizi oluşturalım
+        const taskResults = await Promise.all(
+          tasks.map(async (task, index) => {
+            // Zorluk seviyesi (level_id) değerini belirle
+            let levelId = 2 // Varsayılan orta
+            if (task.difficulty === "kolay") levelId = 1
+            else if (task.difficulty === "zor") levelId = 3
+
+            // Task için API verisi hazırla
+            const taskData = {
+              token: token,
+              project_id: projectId,
+              state_id: 1, // Her zaman 1 olacak
+              level_id: levelId,
+              title: task.name,
+              description: task.description || ""
+            }
+
+            try {
+              // Görev oluşturma API isteği
+              const taskResponse = await fetch("http://10.33.41.222:8000/Task/create_task", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(taskData),
+              })
+
+              if (!taskResponse.ok) {
+                const errorData = await taskResponse.json().catch(() => ({}))
+                console.error("Görev eklenirken hata:", errorData.error || "Bilinmeyen hata")
+                return { success: false, task: task, error: errorData.error }
+              }
+
+              // Başarılı yanıtı al ve task_id değerini çıkart
+              const taskResult = await taskResponse.json()
+              const taskId = taskResult.task_id
+              
+              return { success: true, task: task, taskId: taskId }
+            } catch (error) {
+              console.error("Görev eklenirken hata:", error)
+              return { success: false, task: task, error: error.message }
+            }
+          })
+        )
+
+        // Şimdi her başarılı görev için alt görevleri ekleyelim
+        for (const result of taskResults) {
+          if (result.success && result.taskId && result.task.subtasks && result.task.subtasks.length > 0) {
+            console.log(`Görev ID ${result.taskId} için ${result.task.subtasks.length} alt görev eklenecek...`);
+            
+            await Promise.all(
+              result.task.subtasks.map(async (subtask, subIndex) => {
+                try {
+                  // Zorluk seviyesi (level_id) değerini belirle
+                  let levelId = 2; // Varsayılan orta
+                  if (subtask.difficulty === "kolay") levelId = 1;
+                  else if (subtask.difficulty === "zor") levelId = 3;
+
+                  // Alt görev için API verisi hazırla
+                  const subtaskData = {
+                    token: token,
+                    task_id: result.taskId,
+                    state_id: 1, // Her zaman 1 olacak
+                    level_id: levelId,
+                    title: subtask.name,
+                    description: subtask.description || "",
+                    start_time: subtask.startDate || new Date().toISOString(),
+                    end_time: subtask.endDate || null
+                  };
+                  console.log(`Alt görev ${subIndex + 1} verileri:`, subtaskData);
+
+                  // Alt görev oluşturma API isteği
+                  console.log(`Alt görev ${subIndex + 1} için istek gönderiliyor...`);
+                  const subtaskResponse = await fetch("http://10.33.41.222:8000/Subtask/create_subtask", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(subtaskData),
+                  });
+
+                  console.log(`Alt görev ${subIndex + 1} API yanıtı:`, subtaskResponse.status, subtaskResponse.statusText);
+
+                  if (!subtaskResponse.ok) {
+                    const errorData = await subtaskResponse.json().catch(() => ({}));
+                    console.error(`Alt görev ${subIndex + 1} eklenirken hata:`, errorData);
+                  } else {
+                    const responseData = await subtaskResponse.json().catch(() => ({}));
+                    console.log(`Alt görev ${subIndex + 1} başarıyla oluşturuldu. Yanıt:`, responseData);
+                  }
+                } catch (error) {
+                  console.error(`Alt görev ${subIndex + 1} eklenirken hata:`, error);
+                }
+              })
+            );
+            
+            console.log(`Görev ID ${result.taskId} için alt görev ekleme işlemi tamamlandı.`);
+          } else {
+            console.log('Alt görev ekleme atlandı:', {
+              başarılı: result.success, 
+              görevID: result.taskId, 
+              altGörevVar: result.task.subtasks && result.task.subtasks.length > 0,
+              altGörevSayısı: result.task.subtasks ? result.task.subtasks.length : 0
+            });
+          }
+        }
+      }
+
+      toast.success("Proje, görevler ve alt görevler başarıyla oluşturuldu!")
+      
+      // Formu sıfırla
+      setFormData({
+        projectName: "",
+        description: "",
+        client: "",
+        startDate: "",
+        deadline: "",
+        budget: "",
+        priority: "orta",
+        projectType: "web",
+        teamMembers: [],
+        broker: "",
+      })
+      
+      setSelectedTeamMembers([])
+      setSelectedBroker(null)
+      setTasks([])
+
     } catch (error) {
       console.error("Hata:", error)
-      toast.error("Proje oluşturulurken bir hata oluştu.")
+      toast.error(error.message || "Proje oluşturulurken bir hata oluştu.")
     } finally {
       setIsLoading(false)
     }
@@ -254,6 +404,87 @@ export function ProjectCreate() {
   }
 
   const priorityDetails = getPriorityDetails(formData.priority)
+
+  // Görev eklemek için fonksiyon
+  const handleAddTask = () => {
+    if (!newTaskName.trim()) return
+    
+    const newTask = {
+      name: newTaskName,
+      description: newTaskDescription,
+      difficulty: newTaskDifficulty,
+      startDate: newTaskStartDate,
+      endDate: newTaskEndDate,
+      subtasks: newSubtasks.filter(subtask => subtask.name.trim() !== "")
+    }
+    
+    const updatedTasks = [...tasks, newTask]
+    setTasks(updatedTasks)
+    setFormData(prev => ({ ...prev, tasks: updatedTasks }))
+    
+    // Form temizleme
+    setNewTaskName("")
+    setNewTaskDescription("")
+    setNewTaskDifficulty("orta")
+    setNewTaskStartDate("")
+    setNewTaskEndDate("")
+    setNewSubtasks([{ 
+      name: "", 
+      assignee: null,
+      description: "",
+      startDate: "",
+      endDate: "",
+      difficulty: "orta"
+    }])
+  }
+
+  // Alt görev eklemek için fonksiyon
+  const handleAddSubtask = () => {
+    setNewSubtasks([...newSubtasks, { 
+      name: "", 
+      assignee: null,
+      description: "",
+      startDate: "",
+      endDate: "",
+      difficulty: "orta"
+    }])
+  }
+
+  // Alt görev değişimini izlemek için fonksiyon
+  const handleSubtaskChange = (index, field, value) => {
+    const updatedSubtasks = [...newSubtasks]
+    updatedSubtasks[index][field] = value
+    setNewSubtasks(updatedSubtasks)
+  }
+
+  // Alt görev silme fonksiyonu
+  const handleRemoveSubtask = (index) => {
+    const updatedSubtasks = [...newSubtasks]
+    updatedSubtasks.splice(index, 1)
+    setNewSubtasks(updatedSubtasks)
+  }
+
+  // Görev silme fonksiyonu
+  const handleRemoveTask = (index) => {
+    const updatedTasks = [...tasks]
+    updatedTasks.splice(index, 1)
+    setTasks(updatedTasks)
+    setFormData(prev => ({ ...prev, tasks: updatedTasks }))
+  }
+
+  // Zorluk renklerini ve metinlerini belirle
+  const getDifficultyDetails = (difficulty) => {
+    switch (difficulty) {
+      case "kolay":
+        return { color: "bg-green-100 text-green-800", text: "Kolay" }
+      case "orta":
+        return { color: "bg-blue-100 text-blue-800", text: "Orta" }
+      case "zor":
+        return { color: "bg-orange-100 text-orange-800", text: "Zor" }
+      default:
+        return { color: "bg-gray-100 text-gray-800", text: "Belirsiz" }
+    }
+  }
 
   return (
     <div className="p-6 overflow-y-auto">
@@ -601,6 +832,335 @@ export function ProjectCreate() {
                     </div>
                   </div>
                 </div>
+
+                {/* Görevler */}
+                <div className="mt-10 pt-6 border-t border-gray-200">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <CheckCircle className="w-5 h-5 mr-2 text-gray-700" />
+                    Görevler
+                  </h4>
+
+                  <div className="space-y-4">
+                    {/* Yeni görev ekleme */}
+                    <div className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                      <h5 className="text-md font-medium text-gray-800 mb-4">Yeni Görev Ekle</h5>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label htmlFor="taskName" className="block text-sm font-medium text-gray-700 mb-1">
+                            Görev Adı <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            id="taskName"
+                            value={newTaskName}
+                            onChange={(e) => setNewTaskName(e.target.value)}
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Görev adını girin"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                            Görev Açıklaması
+                          </label>
+                          <textarea
+                            id="taskDescription"
+                            value={newTaskDescription}
+                            onChange={(e) => setNewTaskDescription(e.target.value)}
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Görev açıklaması girin"
+                            rows="1"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label htmlFor="taskDifficulty" className="block text-sm font-medium text-gray-700 mb-1">
+                          Zorluk Seviyesi
+                        </label>
+                        <select
+                          id="taskDifficulty"
+                          value={newTaskDifficulty}
+                          onChange={(e) => setNewTaskDifficulty(e.target.value)}
+                          className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="kolay" className="text-green-600">⚪ Kolay</option>
+                          <option value="orta" className="text-blue-600">⚫ Orta</option>
+                          <option value="zor" className="text-orange-600">🔴 Zor</option>
+                        </select>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                        <div>
+                          <label htmlFor="taskStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+                            Başlangıç Tarihi
+                          </label>
+                          <input
+                            type="date"
+                            id="taskStartDate"
+                            value={newTaskStartDate}
+                            onChange={(e) => setNewTaskStartDate(e.target.value)}
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="taskEndDate" className="block text-sm font-medium text-gray-700 mb-1">
+                            Bitiş Tarihi
+                          </label>
+                          <input
+                            type="date"
+                            id="taskEndDate"
+                            value={newTaskEndDate}
+                            onChange={(e) => setNewTaskEndDate(e.target.value)}
+                            className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="border-t border-gray-200 pt-4 mt-4">
+                        <h6 className="text-sm font-medium text-gray-700 mb-3">Alt Görevler</h6>
+                        
+                        {/* Alt görevler */}
+                        <div className="ml-4 space-y-4 mb-3">
+                          {newSubtasks.map((subtask, index) => (
+                            <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                              <div className="flex justify-between items-start mb-2">
+                                <h6 className="text-sm font-medium">Alt Görev #{index + 1}</h6>
+                                {newSubtasks.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSubtask(index)}
+                                    className="text-red-600 hover:text-red-800"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Alt Görev Adı <span className="text-red-500">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={subtask.name}
+                                    onChange={(e) => handleSubtaskChange(index, 'name', e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Alt görev adını girin"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Görevli
+                                  </label>
+                                  <select
+                                    value={subtask.assignee ? subtask.assignee.id : ""}
+                                    onChange={(e) => {
+                                      const selected = users.find(user => user.id === parseInt(e.target.value));
+                                      handleSubtaskChange(index, 'assignee', selected || null);
+                                    }}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                  >
+                                    <option value="">Görevli Seç</option>
+                                    {users.map(user => (
+                                      <option key={user.id} value={user.id}>{user.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                              
+                              <div className="mb-2">
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Açıklama
+                                </label>
+                                <textarea
+                                  value={subtask.description}
+                                  onChange={(e) => handleSubtaskChange(index, 'description', e.target.value)}
+                                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                  placeholder="Alt görev açıklaması"
+                                  rows="1"
+                                />
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Başlangıç Tarihi
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={subtask.startDate}
+                                    onChange={(e) => handleSubtaskChange(index, 'startDate', e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Bitiş Tarihi
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={subtask.endDate}
+                                    onChange={(e) => handleSubtaskChange(index, 'endDate', e.target.value)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Zorluk
+                                  </label>
+                                  <div className="relative">
+                                    <select
+                                      value={subtask.difficulty}
+                                      onChange={(e) => handleSubtaskChange(index, 'difficulty', e.target.value)}
+                                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                    >
+                                      <option value="kolay">Kolay</option>
+                                      <option value="orta">Orta</option>
+                                      <option value="zor">Zor</option>
+                                    </select>
+                                    <div className="mt-1 w-full h-1 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full ${
+                                          subtask.difficulty === "kolay" ? "bg-green-500" : 
+                                          subtask.difficulty === "orta" ? "bg-blue-500" : 
+                                          "bg-orange-500"
+                                        }`}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={handleAddSubtask}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                        >
+                          + Alt Görev Ekle
+                        </button>
+                      </div>
+                      
+                      <div className="mt-5 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={handleAddTask}
+                          disabled={!newTaskName.trim()}
+                          className={`w-full py-2.5 rounded-lg ${
+                            newTaskName.trim()
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          Görevi Ekle
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Eklenen görevlerin listesi */}
+                    {tasks.length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-3">Eklenen Görevler</h5>
+                        
+                        <div className="space-y-3">
+                          {tasks.map((task, index) => (
+                            <div key={index} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center mb-1">
+                                    <span className="font-medium text-gray-900">{task.name}</span>
+                                    <span className={`ml-2 px-3 py-1 rounded-lg text-sm font-medium ${getDifficultyDetails(task.difficulty).color}`}>
+                                      {getDifficultyDetails(task.difficulty).text} Zorluk
+                                    </span>
+                                  </div>
+                                  
+                                  {task.description && (
+                                    <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                  )}
+                                  
+                                  {task.subtasks.length > 0 && (
+                                    <div className="ml-4 mt-3 space-y-2">
+                                      <h6 className="text-xs font-medium text-gray-700 mb-1">Alt Görevler</h6>
+                                      {task.subtasks.map((subtask, subtaskIndex) => (
+                                        <div key={subtaskIndex} className="bg-gray-50 p-2 rounded-lg border border-gray-200">
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                              <div className="flex items-center mb-1">
+                                                <span className="font-medium text-sm">{subtask.name}</span>
+                                                {subtask.difficulty && (
+                                                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                    subtask.difficulty === "kolay" ? "bg-green-100 text-green-800" : 
+                                                    subtask.difficulty === "orta" ? "bg-blue-100 text-blue-800" : 
+                                                    "bg-orange-100 text-orange-800"
+                                                  }`}>
+                                                    {subtask.difficulty === "kolay" ? "Kolay" : 
+                                                     subtask.difficulty === "orta" ? "Orta" : "Zor"}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              
+                                              {subtask.description && (
+                                                <p className="text-xs text-gray-600 mb-1">{subtask.description}</p>
+                                              )}
+                                              
+                                              <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                                {subtask.assignee && (
+                                                  <div className="flex items-center">
+                                                    <img
+                                                      src={subtask.assignee.avatar || "/placeholder.svg"}
+                                                      alt={subtask.assignee.name}
+                                                      className="w-3 h-3 rounded-full mr-1"
+                                                    />
+                                                    <span>{subtask.assignee.name}</span>
+                                                  </div>
+                                                )}
+                                                
+                                                {subtask.startDate && (
+                                                  <div className="flex items-center">
+                                                    <Calendar className="w-3 h-3 mr-1" />
+                                                    <span>Başlangıç: {subtask.startDate}</span>
+                                                  </div>
+                                                )}
+                                                
+                                                {subtask.endDate && (
+                                                  <div className="flex items-center">
+                                                    <Clock className="w-3 h-3 mr-1" />
+                                                    <span>Bitiş: {subtask.endDate}</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTask(index)}
+                                  className="text-red-600 hover:text-red-800 ml-2"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="mt-8 pt-6 border-t border-gray-200">{/* Buton buradan kaldırıldı */}</div>
@@ -720,6 +1280,62 @@ export function ProjectCreate() {
                         <div className="text-sm font-medium">{selectedBroker.name}</div>
                         <div className="text-xs text-gray-500">{selectedBroker.company}</div>
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Görevler Önizleme */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center text-gray-700 mb-3">
+                    <CheckCircle className="w-5 h-5 mr-2 text-gray-500" />
+                    <span className="text-sm font-medium">Görevler ({tasks.length})</span>
+                  </div>
+
+                  {tasks.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Henüz görev eklenmedi</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {tasks.map((task, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="flex items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <span className="font-medium text-sm">{task.name}</span>
+                                <span className={`ml-2 px-3 py-1 rounded-lg text-sm font-medium ${getDifficultyDetails(task.difficulty).color}`}>
+                                  {getDifficultyDetails(task.difficulty).text} Zorluk
+                                </span>
+                              </div>
+                              
+                              {task.description && (
+                                <p className="text-xs text-gray-600 mt-1">{task.description}</p>
+                              )}
+                              
+                              {task.subtasks.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {task.subtasks.map((subtask, subtaskIndex) => (
+                                    <div key={subtaskIndex} className="flex items-center justify-between text-sm text-gray-600 bg-gray-50 p-2 rounded-lg">
+                                      <div className="flex items-center">
+                                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></span>
+                                        <span>{subtask.name}</span>
+                                      </div>
+                                      {subtask.assignee && (
+                                        <div className="flex items-center ml-2">
+                                          <img
+                                            src={subtask.assignee.avatar || "/placeholder.svg"}
+                                            alt={subtask.assignee.name}
+                                            className="w-4 h-4 rounded-full mr-1"
+                                          />
+                                          <span className="text-xs text-gray-500">{subtask.assignee.name}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

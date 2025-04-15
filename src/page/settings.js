@@ -249,7 +249,7 @@ function ProfileSettings() {
         // Remove quotes if present
         token = token.replace(/^"(.*)"$/, "$1")
 
-        const response = await fetch(`${API_KEY}/Session/user_info`, {
+        const response = await fetch(`${API_KEY}/User/get_user_by_id`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
