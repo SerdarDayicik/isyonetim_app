@@ -70,21 +70,47 @@ export default function CommissionProject() {
           // API'den gelen verileri UI formatına dönüştür
           const formattedProjects = data.assigned_commissions.map((item) => {
             // Tarih formatını düzenle
-            const startDate = new Date(item.start_time)
+            const startDate = item.start_time ? new Date(item.start_time) : new Date();
             const formattedStartDate = startDate.toLocaleDateString("tr-TR", {
               day: "numeric",
               month: "long",
               year: "numeric",
-            })
+            });
+
+            // Bitiş tarihini düzenle
+            const formattedEndDate = item.end_time
+              ? new Date(item.end_time).toLocaleDateString("tr-TR", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "Belirtilmemiş";
 
             // Durum ID'sine göre durum belirle
-            let status = "beklemede"
-            if (item.state_id === 1) status = "devam-ediyor"
-            else if (item.state_id === 2) status = "tamamlandi"
+            let status = "beklemede";
+            if (item.state_id === 1) status = "devam-ediyor";
+            else if (item.state_id === 2) status = "tamamlandi";
 
-            // Komisyon oranını hesapla
-            const commissionRate = ((item.commission_price / item.price) * 100).toFixed(1)
+            // Görev tamamlanma yüzdesini hesapla
+            let progress = 0;
+            if (item.total_task_count > 0) {
+              progress = Math.round((item.completed_task_count / item.total_task_count) * 100);
+            } else {
+              // Görev yoksa durum ID'sine göre belirle
+              progress = status === "tamamlandi" ? 100 : item.state_id * 25;
+            }
 
+            // Komisyon oranını hesapla - direkt oran yerine fiyattan hesapla
+            const commissionRate = ((item.commission_price / item.price) * 100).toFixed(1);
+
+            // Aktif kullanıcının komisyon oranını hesapla
+            const currentUserId = JSON.parse(atob(token.split('.')[1])).user_id;
+            const userCommission = item.commissioners.find(c => c.user_id === currentUserId);
+            const userCommissionRate = userCommission 
+              ? ((userCommission.commission_price / item.price) * 100).toFixed(1) 
+              : "0.0";
+            
+            // API'den gelen bilgilere göre projeyi oluştur
             return {
               id: item.project_id,
               name: item.project_name,
@@ -92,23 +118,21 @@ export default function CommissionProject() {
               totalPrice: item.price,
               commissionRate: commissionRate,
               commissionAmount: item.commission_price,
+              userCommissionRate: userCommissionRate,
+              userCommissionAmount: userCommission ? userCommission.commission_price : 0,
               status: status,
-              progress: status === "tamamlandi" ? 100 : 50, // Varsayılan ilerleme
+              progress: progress,
               startDate: formattedStartDate,
-              deadline: item.end_time
-                ? new Date(item.end_time).toLocaleDateString("tr-TR", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })
-                : "Belirtilmemiş",
-              client: "Müşteri bilgisi API'de yok",
-              contractor: "Yüklenici bilgisi API'de yok",
-              paymentStatus: "kısmi-ödeme", // Varsayılan ödeme durumu
+              deadline: formattedEndDate,
               workerCount: item.worker_count,
+              tasksCompleted: item.completed_task_count,
+              totalTasks: item.total_task_count,
+              // API'den gelen çalışan ve komisyoncu bilgilerini doğrudan kullan
               workers: item.workers || [],
               commissioners: item.commissioners || [],
-            }
+              // Ödeme durumu API'den gelmiyor, varsayılan olarak kısmi-ödeme kullanıyoruz
+              paymentStatus: "kısmi-ödeme" 
+            };
           })
 
           setProjects(formattedProjects)
@@ -360,23 +384,22 @@ export default function CommissionProject() {
                         {/* Client and Contractor */}
                         <div className="flex flex-col gap-2 mb-4">
                           <div className="flex items-center text-gray-700">
-                            <User className="w-5 h-5 mr-2 text-gray-500" />
-                            <span className="text-sm">
-                              Müşteri: <span className="font-medium">{project.client}</span>
-                            </span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
-                            <Users className="w-5 h-5 mr-2 text-gray-500" />
-                            <span className="text-sm">
-                              Yüklenici: <span className="font-medium">{project.contractor}</span>
-                            </span>
-                          </div>
-                          <div className="flex items-center text-gray-700">
                             <Users className="w-5 h-5 mr-2 text-gray-500" />
                             <span className="text-sm">
                               Çalışan Sayısı: <span className="font-medium">{project.workerCount}</span>
                             </span>
                           </div>
+                          
+                          {/* Komisyoncular - API'den geliyor */}
+                          {project.commissioners && project.commissioners.length > 0 && (
+                            <div className="flex items-center text-gray-700">
+                              <Percent className="w-5 h-5 mr-2 text-gray-500" />
+                              <span className="text-sm">
+                                Komisyoncular: <span className="font-medium">{project.commissioners.length} kişi</span>
+                              </span>
+                            </div>
+                          )}
+                          
                           <div className="flex items-center text-gray-700">
                             <Calendar className="w-5 h-5 mr-2 text-gray-500" />
                             <span className="text-sm">Başlangıç: {project.startDate}</span>

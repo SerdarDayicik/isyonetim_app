@@ -11,6 +11,7 @@ import { useScrollAnimation } from "../hooks/use-scroll-animation"
 import { AnimatedCard } from "../components/animated-card"
 import "../globals.css"
 import { Calendar, CheckCircle, Clock, DollarSign, FileText, MoreHorizontal, Search, Users } from 'lucide-react'
+import { TasksModal } from "../components/task-modal"
 
 export default function CalisaniOldugum() {
   const API_KEY = process.env.REACT_APP_API_URL
@@ -19,6 +20,7 @@ export default function CalisaniOldugum() {
   const [selectedProject, setSelectedProject] = useState(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
+  const [isTasksModalOpen, setIsTasksModalOpen] = useState(false)
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -49,6 +51,7 @@ export default function CalisaniOldugum() {
         }
 
         const data = await response.json()
+        console.log("API yanıtı:", data) 
         
         // Transform API data to match our project structure
         const formattedProjects = data.assigned_projects.map(project => ({
@@ -56,18 +59,23 @@ export default function CalisaniOldugum() {
           name: project.project_name,
           description: project.project_description,
           price: project.price,
-          budget: project.price, // Assuming budget equals price if not provided
-          spent: Math.round(project.price * 0.65), // Mock data for spent budget (65% of price)
-          progress: project.state_id === 1 ? 25 : project.state_id === 2 ? 50 : project.state_id === 3 ? 75 : 100,
+          budget: project.price,
+          spent: project.price * 0.3, // Varsayılan harcama olarak bütçenin %30'unu kullanıyoruz
+          progress: Math.round(project.total_task_count > 0 ? (project.completed_task_count / project.total_task_count) * 100 : project.state_id * 25),
           startDate: formatDate(project.start_time),
           deadline: project.end_time ? formatDate(project.end_time) : "Belirlenmedi",
-          client: "Müşteri", // Mock data as client info isn't provided
+          client: "Müşteri", // API'de müşteri bilgisi yok
           teamSize: project.worker_count,
-          tasksCompleted: Math.round(project.state_id * 6), // Mock task completion based on state
-          totalTasks: 10, // Mock total tasks
-          lastActivity: "Bugün", // Mock last activity
-          role: "Proje Çalışanı", // Default role
-          state_id: project.state_id
+          tasksCompleted: project.completed_task_count,
+          totalTasks: project.total_task_count || 1, // Eğer total_task_count 0 ise, en az 1 olarak ayarlayalım
+          lastActivity: "Bugün", // API'de son aktivite bilgisi yok
+          role: "Proje Çalışanı", // Varsayılan rol
+          state_id: project.state_id,
+          is_completed: project.is_completed,
+          
+          // Eğer API'den gelen projede workers ve commissioners varsa onları da ekleyelim
+          workers: project.workers || [], // Eğer API workers sunuyorsa
+          commissioners: project.commissioners || [] // Eğer API commissioners sunuyorsa
         }))
 
         setProjects(formattedProjects)
@@ -98,8 +106,14 @@ export default function CalisaniOldugum() {
   }
 
   const openTeamModal = (project) => {
+    console.log("Ekip modalı açılıyor, proje:", project)
     setSelectedProject(project)
     setIsTeamModalOpen(true)
+  }
+
+  const openTasksModal = (project) => {
+    setSelectedProject(project)
+    setIsTasksModalOpen(true)
   }
 
   // Filter projects based on search term
@@ -296,6 +310,14 @@ export default function CalisaniOldugum() {
                           <Users className="w-4 h-4 mr-1" />
                           Ekip
                         </button>
+
+                        <button
+                          className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-all duration-300 hover:scale-105"
+                          onClick={() => openTasksModal(project)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Görevler
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -315,6 +337,13 @@ export default function CalisaniOldugum() {
 
       {/* Ekip Bilgileri Modal */}
       <TeamModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} project={selectedProject} />
+
+      {/* Görevler Modal */}
+      <TasksModal 
+        isOpen={isTasksModalOpen} 
+        onClose={() => setIsTasksModalOpen(false)} 
+        project={selectedProject} 
+      />
     </div>
   )
 }

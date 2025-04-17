@@ -35,6 +35,11 @@ export function ProjectCreate() {
   const [selectedBroker, setSelectedBroker] = useState(null)
   const [showBrokerResults, setShowBrokerResults] = useState(false)
 
+  // Müşteri arama için state ekleyin
+  const [clientSearchTerm, setClientSearchTerm] = useState("")
+  const [showClientResults, setShowClientResults] = useState(false)
+  const clientSearchRef = useRef(null)
+
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
 
@@ -101,6 +106,9 @@ export function ProjectCreate() {
       if (brokerSearchRef.current && !brokerSearchRef.current.contains(event.target)) {
         setShowBrokerResults(false)
       }
+      if (clientSearchRef.current && !clientSearchRef.current.contains(event.target)) {
+        setShowClientResults(false)
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside)
@@ -163,6 +171,13 @@ export function ProjectCreate() {
       (!selectedBroker || broker.id !== selectedBroker.id),
   )
 
+  // Filtrelenmiş müşteriler
+  const filteredClients = users.filter(
+    (client) =>
+      (client.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+        (client.company && client.company.toLowerCase().includes(clientSearchTerm.toLowerCase())))
+  )
+
   const validateForm = () => {
     const newErrors = {}
 
@@ -221,6 +236,7 @@ export function ProjectCreate() {
         description: formData.description,
         invitees: selectedTeamMembers.map((member) => member.name),
         brokers: selectedBroker ? [selectedBroker.name] : [],
+        customers: clientSearchTerm ? [clientSearchTerm] : [],
         start_date: formData.startDate,
         deadline: formData.deadline,
         priority: formData.priority,
@@ -228,7 +244,7 @@ export function ProjectCreate() {
       }
 
       // Proje oluşturma API isteği
-      const projectResponse = await fetch("http://10.33.41.222:8000/Project/create_project", {
+      const projectResponse = await fetch(`${API_KEY}/Project/create_project`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -268,9 +284,12 @@ export function ProjectCreate() {
               description: task.description || ""
             }
 
+            console.log(`Görev ${index + 1} API'ye gönderiliyor:`, taskData);
+            console.log(`Bu görevin ${task.subtasks?.length || 0} alt görevi var`);
+
             try {
               // Görev oluşturma API isteği
-              const taskResponse = await fetch("http://10.33.41.222:8000/Task/create_task", {
+              const taskResponse = await fetch(`${API_KEY}/Task/create_task`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -288,7 +307,14 @@ export function ProjectCreate() {
               const taskResult = await taskResponse.json()
               const taskId = taskResult.task_id
               
-              return { success: true, task: task, taskId: taskId }
+              console.log(`Görev başarıyla oluşturuldu. Görev ID: ${taskId}`);
+              
+              return { 
+                success: true, 
+                task: task, 
+                taskId: taskId,
+                hasSubtasks: task.subtasks && task.subtasks.length > 0
+              }
             } catch (error) {
               console.error("Görev eklenirken hata:", error)
               return { success: false, task: task, error: error.message }
@@ -297,59 +323,29 @@ export function ProjectCreate() {
         )
 
         // Şimdi her başarılı görev için alt görevleri ekleyelim
+        const subtasksToAdd = []
+
         for (const result of taskResults) {
           if (result.success && result.taskId && result.task.subtasks && result.task.subtasks.length > 0) {
-            console.log(`Görev ID ${result.taskId} için ${result.task.subtasks.length} alt görev eklenecek...`);
+            console.log(`Görev ID ${result.taskId} için ${result.task.subtasks.length} alt görev bulundu`);
             
-            await Promise.all(
-              result.task.subtasks.map(async (subtask, subIndex) => {
-                try {
-                  // Zorluk seviyesi (level_id) değerini belirle
-                  let levelId = 2; // Varsayılan orta
-                  if (subtask.difficulty === "kolay") levelId = 1;
-                  else if (subtask.difficulty === "zor") levelId = 3;
-
-                  // Alt görev için API verisi hazırla
-                  const subtaskData = {
-                    token: token,
-                    task_id: result.taskId,
-                    state_id: 1, // Her zaman 1 olacak
-                    level_id: levelId,
-                    title: subtask.name,
-                    description: subtask.description || "",
-                    start_time: subtask.startDate || new Date().toISOString(),
-                    end_time: subtask.endDate || null
-                  };
-                  console.log(`Alt görev ${subIndex + 1} verileri:`, subtaskData);
-
-                  // Alt görev oluşturma API isteği
-                  console.log(`Alt görev ${subIndex + 1} için istek gönderiliyor...`);
-                  const subtaskResponse = await fetch("http://10.33.41.222:8000/Subtask/create_subtask", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(subtaskData),
-                  });
-
-                  console.log(`Alt görev ${subIndex + 1} API yanıtı:`, subtaskResponse.status, subtaskResponse.statusText);
-
-                  if (!subtaskResponse.ok) {
-                    const errorData = await subtaskResponse.json().catch(() => ({}));
-                    console.error(`Alt görev ${subIndex + 1} eklenirken hata:`, errorData);
-                  } else {
-                    const responseData = await subtaskResponse.json().catch(() => ({}));
-                    console.log(`Alt görev ${subIndex + 1} başarıyla oluşturuldu. Yanıt:`, responseData);
-                  }
-                } catch (error) {
-                  console.error(`Alt görev ${subIndex + 1} eklenirken hata:`, error);
-                }
+            // Her bir alt görev için veri oluşturup listeye ekleyelim
+            result.task.subtasks.forEach(subtask => {
+              // Zorluk seviyesi (level_id) değerini belirle
+              let levelId = 2 // Varsayılan orta
+              if (subtask.difficulty === "kolay") levelId = 1
+              else if (subtask.difficulty === "zor") levelId = 3
+              
+              subtasksToAdd.push({
+                task_id: result.taskId,
+                state_id: 1, // Her zaman 1 olacak
+                level_id: levelId,
+                title: subtask.name,
+                description: subtask.description || ""
               })
-            );
-            
-            console.log(`Görev ID ${result.taskId} için alt görev ekleme işlemi tamamlandı.`);
+            })
           } else {
-            console.log('Alt görev ekleme atlandı:', {
+            console.log("Alt görev ekleme atlandı:", {
               başarılı: result.success, 
               görevID: result.taskId, 
               altGörevVar: result.task.subtasks && result.task.subtasks.length > 0,
@@ -357,26 +353,129 @@ export function ProjectCreate() {
             });
           }
         }
+
+        // Alt görevler varsa bunları tek seferde gönderelim
+        if (subtasksToAdd.length > 0) {
+          console.log(`Toplam ${subtasksToAdd.length} alt görev için istek gönderiliyor...`);
+          console.log("Alt görev verileri:", subtasksToAdd);
+          
+          try {
+            const subtaskResponse = await fetch(`${API_KEY}/Subtask/create_subtask`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                token: token,
+                subtasks: subtasksToAdd
+              }),
+            });
+            
+            console.log(`Alt görev API yanıtı:`, subtaskResponse.status, subtaskResponse.statusText);
+            
+            if (!subtaskResponse.ok) {
+              const errorData = await subtaskResponse.json().catch(() => ({}));
+              console.error(`Alt görevler eklenirken hata:`, errorData);
+            } else {
+              const responseData = await subtaskResponse.json().catch(() => ({}));
+              console.log(`${subtasksToAdd.length} alt görev başarıyla oluşturuldu. Yanıt:`, responseData);
+              
+              // Alt görev ID'lerini ve atanan kullanıcıları eşleştirme
+              if (responseData && responseData.created_subtask_ids && Array.isArray(responseData.created_subtask_ids)) {
+                // Subtask assignment isteklerini toplayalım
+                const subtaskAssignments = [];
+                
+                // taskResults içinde dolaşarak subtask bilgilerini alalım
+                let subtaskIndex = 0;
+                for (const result of taskResults) {
+                  if (result.success && result.task.subtasks && result.task.subtasks.length > 0) {
+                    for (const subtask of result.task.subtasks) {
+                      // Eğer subtask'e bir kullanıcı atanmışsa
+                      if (subtask.assignee && subtask.assignee.id) {
+                        // responseData.created_subtask_ids dizisinde sırasıyla oluşturulan alt görevlerin ID'leri var
+                        if (subtaskIndex < responseData.created_subtask_ids.length) {
+                          const subtaskId = responseData.created_subtask_ids[subtaskIndex];
+                          const userId = subtask.assignee.id;
+                          
+                          subtaskAssignments.push({
+                            subtask_id: subtaskId,
+                            user_id: userId
+                          });
+                          
+                          console.log(`Atama yapılacak: Alt görev ID: ${subtaskId}, Kullanıcı ID: ${userId}`);
+                        }
+                      }
+                      subtaskIndex++;
+                    }
+                  }
+                }
+                
+                // Şimdi atama isteklerini gönderelim
+                if (subtaskAssignments.length > 0) {
+                  console.log(`${subtaskAssignments.length} atama isteği gönderiliyor...`);
+                  
+                  // Tüm atamaları Promise.all ile asenkron olarak gönderelim
+                  const assignmentResults = await Promise.all(
+                    subtaskAssignments.map(async (assignment) => {
+                      try {
+                        const assignmentResponse = await fetch(`${API_KEY}/SubtaskAssignment/create_subtask_assignment`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify(assignment),
+                        });
+                        
+                        if (!assignmentResponse.ok) {
+                          const errorData = await assignmentResponse.json().catch(() => ({}));
+                          console.error(`Alt görev ataması yapılırken hata (Subtask ID: ${assignment.subtask_id}):`, errorData);
+                          return { success: false, error: errorData, assignment };
+                        }
+                        
+                        const assignmentResult = await assignmentResponse.json();
+                        console.log(`Alt görev ataması başarılı (Subtask ID: ${assignment.subtask_id}):`, assignmentResult);
+                        return { success: true, data: assignmentResult, assignment };
+                      } catch (error) {
+                        console.error(`Alt görev ataması yapılırken hata (Subtask ID: ${assignment.subtask_id}):`, error);
+                        return { success: false, error: error.message, assignment };
+                      }
+                    })
+                  );
+                  
+                  console.log(`Atama sonuçları:`, assignmentResults);
+                } else {
+                  console.log(`Atanacak alt görev bulunamadı.`);
+                }
+              } else {
+                console.log(`Alt görev ID'leri API yanıtında bulunamadı veya uygun formatta değil:`, responseData);
+              }
+            }
+          } catch (error) {
+            console.error(`Alt görevler eklenirken hata:`, error);
+          }
+        } else {
+          console.log("Eklenecek alt görev bulunamadı.");
+        }
       }
 
       toast.success("Proje, görevler ve alt görevler başarıyla oluşturuldu!")
       
-      // Formu sıfırla
-      setFormData({
-        projectName: "",
-        description: "",
-        client: "",
-        startDate: "",
-        deadline: "",
-        budget: "",
-        priority: "orta",
-        projectType: "web",
-        teamMembers: [],
-        broker: "",
-      })
+        // Formu sıfırla
+        setFormData({
+          projectName: "",
+          description: "",
+          client: "",
+          startDate: "",
+          deadline: "",
+          budget: "",
+          priority: "orta",
+          projectType: "web",
+          teamMembers: [],
+          broker: "",
+        })
       
-      setSelectedTeamMembers([])
-      setSelectedBroker(null)
+        setSelectedTeamMembers([])
+        setSelectedBroker(null)
       setTasks([])
 
     } catch (error) {
@@ -541,18 +640,53 @@ export function ProjectCreate() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="client" className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
                           Müşteri <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          id="client"
-                          name="client"
-                          value={formData.client}
-                          onChange={handleChange}
-                          className={`w-full p-2.5 border ${errors.client ? "border-red-500" : "border-gray-300"} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
-                          placeholder="Müşteri adını girin"
-                        />
+                        <div className="relative" ref={clientSearchRef}>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={clientSearchTerm}
+                              onChange={(e) => setClientSearchTerm(e.target.value)}
+                              onFocus={() => setShowClientResults(true)}
+                              className={`w-full p-2.5 pl-10 border ${errors.client ? "border-red-500" : "border-gray-300"} rounded-lg focus:ring-blue-500 focus:border-blue-500`}
+                              placeholder="Müşteri adını girin"
+                            />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+                          </div>
+
+                          {showClientResults && clientSearchTerm && filteredClients.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {filteredClients.map((client) => (
+                                <div
+                                  key={client.id}
+                                  className="p-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
+                                  onClick={() => {
+                                    setFormData(prev => ({ ...prev, client: client.name }))
+                                    setClientSearchTerm(client.name)
+                                    setShowClientResults(false)
+                                  }}
+                                >
+                                  <div className="flex items-center">
+                                    <img
+                                      src={client.avatar || "/placeholder.svg"}
+                                      alt={client.name}
+                                      className="w-8 h-8 rounded-full mr-2"
+                                    />
+                                    <div>
+                                      <div className="font-medium">{client.name}</div>
+                                      <div className="text-xs text-gray-500">{client.company}</div>
+                                    </div>
+                                  </div>
+                                  <button type="button" className="text-blue-600 hover:text-blue-800 text-sm">
+                                    Seç
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         {errors.client && <p className="mt-1 text-sm text-red-500">{errors.client}</p>}
                       </div>
 

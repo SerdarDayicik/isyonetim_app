@@ -35,14 +35,20 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
   if (!project) return null
 
   // Durum renklerini ve metinlerini belirle
-  const getStatusDetails = (status) => {
-    switch (status) {
-      case "devam-ediyor":
+  const getStatusDetails = (state_id, is_completed) => {
+    if (is_completed) {
+      return { color: "bg-green-100 text-green-800", text: "Tamamlandı" }
+    }
+    
+    switch (state_id) {
+      case 1:
+        return { color: "bg-gray-100 text-gray-800", text: "Başlamadı" }
+      case 2:
         return { color: "bg-blue-100 text-blue-800", text: "Devam Ediyor" }
-      case "tamamlandi":
+      case 3:
+        return { color: "bg-yellow-100 text-yellow-800", text: "İncelemede" }
+      case 4:
         return { color: "bg-green-100 text-green-800", text: "Tamamlandı" }
-      case "beklemede":
-        return { color: "bg-yellow-100 text-yellow-800", text: "Beklemede" }
       default:
         return { color: "bg-gray-100 text-gray-800", text: "Belirsiz" }
     }
@@ -66,7 +72,7 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
     }
   }
 
-  const statusDetails = getStatusDetails(project.status)
+  const statusDetails = getStatusDetails(project.state_id, project.is_completed)
   const priorityDetails = project.priority ? getPriorityDetails(project.priority) : null
 
   return (
@@ -110,9 +116,14 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDetails.color}`}>
-                    {statusDetails.text}
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusDetails(project.state_id, project.is_completed).color}`}>
+                    {getStatusDetails(project.state_id, project.is_completed).text}
                   </span>
+                  {project.role && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {project.role}
+                    </span>
+                  )}
                   {priorityDetails && (
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${priorityDetails.color}`}>
                       {priorityDetails.text}
@@ -207,7 +218,7 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                           <div className="w-full bg-gray-200 rounded-full h-2.5">
                             <div
                               className={`h-2.5 rounded-full ${
-                                project.status === "tamamlandi" ? "bg-green-600" : "bg-blue-600"
+                                project.state_id === 4 ? "bg-green-600" : "bg-blue-600"
                               } transition-all duration-1000 ease-out`}
                               style={{ width: `${progressCounter.value}%` }}
                             ></div>
@@ -226,7 +237,7 @@ export const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                           <div className="w-full bg-gray-200 rounded-full h-2.5">
                             <div
                               className="bg-green-600 h-2.5 rounded-full transition-all duration-1000 ease-out"
-                              style={{ width: `${(tasksCompletedCounter.value / project.totalTasks) * 100}%` }}
+                              style={{ width: `${project.totalTasks > 0 ? (tasksCompletedCounter.value / project.totalTasks) * 100 : 0}%` }}
                             ></div>
                           </div>
                         </div>

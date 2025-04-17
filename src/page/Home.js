@@ -6,21 +6,25 @@ import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import {
   Briefcase,
-  Bell,
-  Calendar,
   Users,
   FileText,
-  PlusCircle,
-  Settings,
-  Clock,
-  CheckCircle,
-  AlertCircle,
+  Award,
+  ArrowRight,
   ChevronRight,
-  Star,
-  MessageSquare,
+  Shield,
+  Bell,
+  Clock,
+  X,
   BarChart2,
-  ArrowUpRight,
+  User,
+  Settings,
+  MessageSquare,
   Zap,
+  HeartPulse,
+  BookOpen,
+  ClipboardList,
+  CheckCircle,
+  Loader
 } from "lucide-react"
 import "../globals.css"
 
@@ -29,9 +33,14 @@ export default function Home() {
   const navigate = useNavigate()
   const [userName, setUserName] = useState("")
   const [userRole, setUserRole] = useState("")
-  const [teamMembers, setTeamMembers] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [employees, setEmployees] = useState([])
+  const [isLoading, setIsLoading] = useState(true) // Başlangıçta true olarak ayarlandı
+  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false)
+  const [employeeOfMonth, setEmployeeOfMonth] = useState(null)
+  const [pageReady, setPageReady] = useState(false) // Sayfa hazır olduğunda true olacak
+
+  const API_KEY = process.env.REACT_APP_API_URL
+
 
   // Token'ı localStorage'dan al
   const token = localStorage.getItem("token")
@@ -39,331 +48,227 @@ export default function Home() {
   const role = token ? JSON.parse(atob(token.split(".")[1]))?.role : null
 
   useEffect(() => {
-    // location.state?.message mevcutsa başarılı bir toast göster
-    if (location.state?.message) {
-      toast.success(location.state.message)
-    }
+    // Sayfa yüklenirken önce çalışanları getir, sonra sayfayı göster
+    const initPage = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Location state mesajını işle
+        if (location.state?.message) {
+          toast.success(location.state.message)
+        }
 
-    // Kullanıcı adını ve rolünü al
-    if (token) {
-      const decodedToken = JSON.parse(atob(token.split(".")[1]))
-      setUserName(decodedToken.name || "Kullanıcı")
-      setUserRole(decodedToken.role === "admin" ? "Yönetici" : "Takım Üyesi")
-    }
+        // Kullanıcı adını ve rolünü al
+        if (token) {
+          const decodedToken = JSON.parse(atob(token.split(".")[1]))
+          setUserName(decodedToken.name || "Kullanıcı")
+          
+          // Role göre Türkçe rol adı belirle
+          let roleName = "Üye"
+          if (decodedToken.role === "admin") roleName = "Yönetici"
+          else if (decodedToken.role === "commissioner") roleName = "Komisyoncu"
+          else if (decodedToken.role === "worker") roleName = "Çalışan"
+          
+          setUserRole(roleName)
+        }
 
-    // Ekip üyelerini çek
-    fetchTeamMembers()
+        // Çalışanları çek
+        await fetchEmployees();
+        
+        // Tüm veriler yüklendikten sonra sayfayı hazır hale getir
+        setPageReady(true);
+      } catch (error) {
+        console.error("Sayfa yüklenirken hata:", error);
+        // Hata durumunda da sayfayı göster
+        setPageReady(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initPage();
   }, [location.state, token])
 
-  // Ekip üyelerini API'den çek
-  const fetchTeamMembers = async () => {
-    setIsLoading(true)
-    setError(null)
-
+  // Çalışanları getir
+  const fetchEmployees = async () => {
     try {
-      const apiUrl = "http://10.33.41.222:8000/User/get_users"
-
-      const response = await fetch(apiUrl, {
+      const response = await fetch(`${API_KEY}/User/get_users`, {
         method: "GET",
         headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+          "Content-Type": "application/json"
+        }
       })
 
       if (!response.ok) {
-        throw new Error(`API yanıt hatası: ${response.status}`)
+        throw new Error("Çalışanlar getirilemedi.")
       }
 
       const data = await response.json()
+      console.log("Çalışanlar:", data)
 
-      if (!Array.isArray(data)) {
-        throw new Error("API yanıtı beklenen formatta değil")
-      }
-
-      // Her kullanıcıya avatar ekle
-      const membersWithAvatars = data.map((user, index) => ({
-        ...user,
-        id: user.id || index + 1,
-        avatar:
-          user.profile_photo_url ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`,
-        role: user.role || "Kullanıcı",
+      // Her çalışana avatar ekle
+      const employeesWithAvatars = data.map(employee => ({
+        ...employee,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name)}&background=random&color=fff`
       }))
 
-      setTeamMembers(membersWithAvatars)
-    } catch (err) {
-      console.error("Ekip üyeleri yüklenirken hata:", err)
-      setError(err.message)
+      setEmployees(employeesWithAvatars)
 
-      // Hata durumunda örnek verilerle devam et
-      const fallbackMembers = [
-        {
-          id: 1,
-          name: "Ahmet",
-          surname: "Yılmaz",
-          role: "admin",
-          avatar: "https://ui-avatars.com/api/?name=Ahmet+Yilmaz&background=random",
-        },
-        {
-          id: 2,
-          name: "Ayşe",
-          surname: "Kaya",
-          role: "user",
-          avatar: "https://ui-avatars.com/api/?name=Ayse+Kaya&background=random",
-        },
-        {
-          id: 3,
-          name: "Mehmet",
-          surname: "Demir",
-          role: "user",
-          avatar: "https://ui-avatars.com/api/?name=Mehmet+Demir&background=random",
-        },
-      ]
-
-      setTeamMembers(fallbackMembers)
-    } finally {
-      setIsLoading(false)
+      // Rastgele bir çalışanı ayın elemanı olarak seç
+      if (employeesWithAvatars.length > 0) {
+        const randomIndex = Math.floor(Math.random() * employeesWithAvatars.length)
+        const selectedEmployee = employeesWithAvatars[randomIndex]
+        
+        setEmployeeOfMonth({
+          ...selectedEmployee,
+          role: "Kıdemli Yazılım Geliştirici", // Varsayılan rol
+          description: "Projelerinde gösterdiği olağanüstü performans ve ekip çalışması için ödüllendirilmiştir.",
+          achievements: [
+            "Zamanında teslim edilen projeler",
+            "Mükemmel ekip çalışması",
+            "Müşteri memnuniyeti odaklı çalışma"
+          ]
+        })
+      }
+    } catch (error) {
+      console.error("Çalışanlar yüklenirken hata:", error)
+      // Hata durumunda varsayılan ayın elemanı bilgisi
+      setEmployeeOfMonth({
+        name: "Ahmet Yılmaz",
+        role: "Kıdemli Yazılım Geliştirici",
+        image: "https://ui-avatars.com/api/?name=Ahmet+Yilmaz&background=random&color=fff",
+        description: "Projelerinde gösterdiği olağanüstü performans ve ekip çalışması için ödüllendirilmiştir.",
+        achievements: [
+          "Zamanında teslim edilen projeler",
+          "Mükemmel ekip çalışması", 
+          "Müşteri memnuniyeti odaklı çalışma"
+        ]
+      })
     }
   }
 
-  // Ana menü öğeleri
-  const mainMenuItems = [
+  // Ana kartlar
+  const mainCards = [
     {
-      id: "my-projects",
-      title: "Projelerim",
-      description: "Çalışanı olduğunuz projeleri görüntüleyin ve yönetin",
+      id: "company-info",
+      title: "Kurumsal Bilgiler",
+      description: "Şirket hakkında genel bilgiler ve kurumsal dokümanlar",
       icon: Briefcase,
-      color: "bg-blue-100 text-blue-600",
-      path: "/Project/WorkingProject",
+      color: "from-blue-500 to-blue-600",
+      bgPattern: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))]",
+      path: "/company-info",
+      stats: "%100 İş Güvenliği"
     },
     {
-      id: "notifications",
-      title: "Bildirimler",
-      description: "Proje güncellemeleri ve bildirimlerinizi kontrol edin",
-      icon: Bell,
-      color: "bg-purple-100 text-purple-600",
-      path: "/Project/Notification",
-      badge: 4,
-    },
-    {
-      id: "calendar",
-      title: "Takvim",
-      description: "Toplantılar ve proje takvimlerinizi görüntüleyin",
-      icon: Calendar,
-      color: "bg-green-100 text-green-600",
-      path: "/calendar",
-    },
-    {
-      id: "team",
-      title: "Ekip",
-      description: "Ekip üyelerini ve iş arkadaşlarınızı görüntüleyin",
+      id: "employees",
+      title: "Çalışanlar",
+      description: "Ekip üyeleri ve organizasyon yapısı",
       icon: Users,
-      color: "bg-orange-100 text-orange-600",
-      path: "/settings",
+      color: "from-indigo-500 to-indigo-600",
+      bgPattern: "bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))]",
+      path: "#",
+      action: () => setIsEmployeeModalOpen(true),
+      stats: `${employees.length} takım üyesi`
     },
+    {
+      id: "security",
+      title: "İş Güvenliği",
+      description: "İş sağlığı ve güvenliği prosedürleri",
+      icon: Shield,
+      color: "from-emerald-500 to-emerald-600",
+      bgPattern: "bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))]",
+      path: "/security",
+      stats: "0 İş Kazası"
+    }
   ]
 
-  // Yönetici menü öğeleri
-  const adminMenuItems = [
-    {
-      id: "create-project",
-      title: "Yeni Proje Oluştur",
-      description: "Yeni bir proje oluşturun ve ekip atayın",
-      icon: PlusCircle,
-      color: "bg-indigo-100 text-indigo-600",
-      path: "/",
-    },
+  // Yönetici kartları
+  const adminCards = [
     {
       id: "manage-projects",
-      title: "Projeleri Yönet",
-      description: "Yöneticisi olduğunuz projeleri yönetin",
+      title: "Proje Yönetimi",
+      description: "Tüm projeleri görüntüleyin ve yönetin",
       icon: FileText,
-      color: "bg-red-100 text-red-600",
-      path: "/Project/AdministratorProject",
+      color: "from-rose-500 to-rose-600",
+      bgPattern: "bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))]",
+      path: "/Project/AdministratorProject"
     },
     {
-      id: "settings",
-      title: "Ayarlar",
-      description: "Sistem ayarlarını ve kullanıcı izinlerini yönetin",
-      icon: Settings,
-      color: "bg-gray-100 text-gray-600",
-      path: "/settings",
-    },
-  ]
-
-  // Örnek yaklaşan görevler
-  const upcomingTasks = [
-    {
-      id: 1,
-      name: "Frontend Geliştirme",
-      project: "Kurumsal Web Sitesi Yenileme",
-      dueDate: "15 Nisan 2025",
-      priority: "yüksek",
-    },
-    {
-      id: 2,
-      name: "API Entegrasyonu",
-      project: "Mobil Uygulama Geliştirme",
-      dueDate: "20 Nisan 2025",
-      priority: "orta",
-    },
-    {
-      id: 3,
-      name: "Veri Analizi Raporu",
-      project: "Veri Analizi ve Raporlama Sistemi",
-      dueDate: "25 Nisan 2025",
-      priority: "düşük",
-    },
-  ]
-
-  // Örnek son aktiviteler
-  const recentActivities = [
-    {
-      id: 1,
-      user: "Ahmet Yılmaz",
-      action: "bir görev tamamladı",
-      target: "Frontend Tasarımı",
-      project: "Kurumsal Web Sitesi Yenileme",
-      time: "10 dakika önce",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    {
-      id: 2,
-      user: "Ayşe Kaya",
-      action: "bir yorum ekledi",
-      target: "API Dokümantasyonu",
-      project: "Mobil Uygulama Geliştirme",
-      time: "1 saat önce",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-    {
-      id: 3,
-      user: "Mehmet Demir",
-      action: "bir dosya yükledi",
-      target: "Veritabanı Şeması",
-      project: "ERP Sistemi Entegrasyonu",
-      time: "3 saat önce",
-      avatar: "/placeholder.svg?height=32&width=32",
-    },
-  ]
-
-  // Örnek duyurular
-  const announcements = [
-    {
-      id: 1,
-      title: "Yeni Özellik: Gelişmiş Raporlama",
-      content:
-        "Sistemimize gelişmiş raporlama özellikleri eklenmiştir. Artık projelerinizin performansını daha detaylı analiz edebilirsiniz.",
-      date: "2 Nisan 2025",
-      type: "feature",
-    },
-    {
-      id: 2,
-      title: "Bakım Duyurusu",
-      content: "15 Nisan 2025 tarihinde 02:00-04:00 saatleri arasında planlı bakım çalışması yapılacaktır.",
-      date: "5 Nisan 2025",
-      type: "maintenance",
-    },
-  ]
-
-  // Örnek proje istatistikleri
-  const projectStats = {
-    active: 5,
-    completed: 3,
-    upcoming: 2,
-    totalTasks: 45,
-    completedTasks: 28,
-  }
-
-  // Öncelik renklerini ve metinlerini belirle
-  const getPriorityDetails = (priority) => {
-    switch (priority) {
-      case "düşük":
-        return { color: "bg-gray-100 text-gray-800", text: "Düşük" }
-      case "orta":
-        return { color: "bg-blue-100 text-blue-800", text: "Orta" }
-      case "yüksek":
-        return { color: "bg-orange-100 text-orange-800", text: "Yüksek" }
-      case "kritik":
-        return { color: "bg-red-100 text-red-800", text: "Kritik" }
-      default:
-        return { color: "bg-gray-100 text-gray-800", text: "Belirsiz" }
+      id: "analytics",
+      title: "Performans Takibi",
+      description: "Şirket performans analizlerini görüntüleyin",
+      icon: BarChart2,
+      color: "from-amber-500 to-amber-600",
+      bgPattern: "bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))]",
+      path: "/analytics"
     }
-  }
+  ]
 
-  const handleNavigate = (path) => {
-    navigate(path)
+  // Komisyoncu kartları
+  const commissionerCards = [
+    {
+      id: "commissions",
+      title: "Komisyon Yönetimi",
+      description: "Komisyoncusu olduğunuz projeleri görüntüleyin",
+      icon: FileText,
+      color: "from-purple-500 to-purple-600",
+      bgPattern: "bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))]",
+      path: "/Project/CommissionProject"
+    }
+  ]
+
+  // Hızlı erişim butonları
+  const quickLinks = [
+    { name: "Bildirimler", icon: Bell, path: "/notifications" },
+    { name: "Ayarlar", icon: Settings, path: "/settings" },
+    { name: "İletişim", icon: MessageSquare, path: "/contact" }
+  ]
+
+  // Eğer sayfa hazır değilse, yükleme ekranını göster
+  if (!pageReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600 mb-4"></div>
+        <p className="text-gray-600 font-medium">Yükleniyor...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 overflow-y-auto">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white overflow-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
 
-      {/* Hoş Geldiniz Bölümü */}
-      <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-xl border border-blue-100">
-        <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Hoş Geldiniz, {userName}!</h1>
-          <p className="text-gray-600 mb-4">
-            Bugün{" "}
-            {new Date().toLocaleDateString("tr-TR", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-            .{userRole && ` ${userRole} olarak giriş yaptınız.`} Proje yönetim sisteminde size yardımcı olabilecek
-            araçlara aşağıdan erişebilirsiniz.
-          </p>
-
-          {/* Hızlı İstatistikler */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                  <Briefcase className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Aktif Projeler</p>
-                  <p className="text-xl font-bold">{projectStats.active}</p>
-                </div>
+      {/* Hero Bölümü */}
+      <div className="py-16 px-6 md:px-10 lg:px-16 bg-gradient-to-br from-indigo-500 to-blue-600 text-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="mb-8 md:mb-0">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">Hoş Geldiniz, {userName}!</h1>
+              <p className="text-lg text-indigo-100">
+                Kurumsal iş yönetim sistemimize hoş geldiniz.
+                {userRole && <span className="block mt-2">Şu anda <span className="font-semibold">{userRole}</span> olarak giriş yaptınız.</span>}
+              </p>
+              
+              <div className="flex flex-wrap gap-3 mt-8">
+                {quickLinks.map((link) => (
+                  <button 
+                    key={link.name}
+                    onClick={() => navigate(link.path)}
+                    className="flex items-center bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full py-2 px-4 text-sm font-medium transition duration-300"
+                  >
+                    <link.icon className="w-4 h-4 mr-2" />
+                    {link.name}
+                  </button>
+                ))}
               </div>
             </div>
-
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 rounded-lg mr-3">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Tamamlanan</p>
-                  <p className="text-xl font-bold">{projectStats.completed}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                  <CheckCircle className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Görevler</p>
-                  <p className="text-xl font-bold">
-                    {projectStats.completedTasks}/{projectStats.totalTasks}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-              <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 rounded-lg mr-3">
-                  <Bell className="w-5 h-5 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Bildirimler</p>
-                  <p className="text-xl font-bold">4</p>
+            
+            <div className="w-full md:w-auto">
+              <div className="relative">
+                <div className="absolute -top-6 -left-6 w-24 h-24 bg-yellow-400 rounded-full opacity-50 blur-xl"></div>
+                <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-blue-400 rounded-full opacity-40 blur-xl"></div>
+                <div className="w-80 h-60 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-lg flex items-center justify-center relative z-10">
+                  <div className="text-white text-xl font-bold">İş Yönetim Sistemi</div>
                 </div>
               </div>
             </div>
@@ -371,397 +276,342 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Ana İçerik */}
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sol Sütun - Ana Menü */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Ana Menü */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Ana Menü</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {mainMenuItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative"
-                    onClick={() => handleNavigate(item.path)}
-                  >
-                    <div className="flex items-start">
-                      <div className={`p-3 rounded-lg ${item.color} mr-4`}>
-                        <item.icon className="w-6 h-6" />
+      <div className="w-full overflow-y-auto">
+        <div className="max-w-6xl mx-auto px-6 pb-16">
+          {/* Ana Kartlar */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Hızlı Erişim</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mainCards.map((card) => (
+                <div
+                  key={card.id}
+                  onClick={() => card.action ? card.action() : navigate(card.path)}
+                  className={`${card.bgPattern} ${card.color} text-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer group h-64 relative`}
+                >
+                  <div className="p-6 h-full flex flex-col justify-between">
+                    <div>
+                      <div className="bg-white bg-opacity-20 p-3 rounded-lg w-12 h-12 flex items-center justify-center mb-4">
+                        <card.icon className="w-6 h-6" />
                       </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">{item.title}</h3>
-                        <p className="text-gray-600">{item.description}</p>
+                      <h3 className="text-xl font-bold mb-2">{card.title}</h3>
+                      <p className="text-white text-opacity-90">{card.description}</p>
+                      {card.stats && (
+                        <div className="mt-2 inline-block bg-white bg-opacity-20 rounded-full px-3 py-1 text-sm">
+                          {card.stats}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex justify-end items-center mt-4">
+                      <span className="text-white text-opacity-80 group-hover:text-opacity-100 font-medium flex items-center transition-all duration-300">
+                        Görüntüle <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Dekoratif desen */}
+                  <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white bg-opacity-10 rounded-full"></div>
+                  <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-white bg-opacity-10 rounded-full"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Role Özel Kartlar */}
+          {role === "admin" && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Yönetici Araçları</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {adminCards.map((card) => (
+                  <div
+                    key={card.id}
+                    onClick={() => navigate(card.path)}
+                    className={`${card.bgPattern} ${card.color} text-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer group h-40 relative`}
+                  >
+                    <div className="p-6 h-full flex flex-col justify-between">
+                      <div className="flex items-start">
+                        <div className="bg-white bg-opacity-20 p-3 rounded-lg w-12 h-12 flex items-center justify-center mr-4">
+                          <card.icon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold mb-1">{card.title}</h3>
+                          <p className="text-white text-opacity-90">{card.description}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end items-center">
+                        <span className="text-white text-opacity-80 group-hover:text-opacity-100 font-medium flex items-center transition-all duration-300">
+                          Görüntüle <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
+                        </span>
                       </div>
                     </div>
-                    {item.badge && (
-                      <div className="absolute top-4 right-4 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {item.badge}
-                      </div>
-                    )}
+                    
+                    {/* Dekoratif desen */}
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-20 h-20 bg-white bg-opacity-10 rounded-full"></div>
                   </div>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* Yönetici Menüsü (sadece admin rolü için) */}
-            {role === "admin" && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Yönetici Menüsü</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {adminMenuItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => handleNavigate(item.path)}
-                    >
+          {/* Komisyoncu kartları */}
+          {role === "commissioner" && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Komisyoncu Araçları</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {commissionerCards.map((card) => (
+                  <div
+                    key={card.id}
+                    onClick={() => navigate(card.path)}
+                    className={`${card.bgPattern} ${card.color} text-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer group h-40 relative`}
+                  >
+                    <div className="p-6 h-full flex flex-col justify-between">
                       <div className="flex items-start">
-                        <div className={`p-3 rounded-lg ${item.color} mr-4`}>
-                          <item.icon className="w-6 h-6" />
+                        <div className="bg-white bg-opacity-20 p-3 rounded-lg w-12 h-12 flex items-center justify-center mr-4">
+                          <card.icon className="w-6 h-6" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-medium text-gray-900 mb-1">{item.title}</h3>
-                          <p className="text-gray-600">{item.description}</p>
+                          <h3 className="text-xl font-bold mb-1">{card.title}</h3>
+                          <p className="text-white text-opacity-90">{card.description}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Yaklaşan Görevler */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">Yaklaşan Görevler</h2>
-                <button
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-                  onClick={() => handleNavigate("/tasks")}
-                >
-                  Tümünü Gör <ChevronRight className="w-4 h-4 ml-1" />
-                </button>
-              </div>
-
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                {upcomingTasks.map((task, index) => {
-                  const priorityDetails = getPriorityDetails(task.priority)
-                  return (
-                    <div
-                      key={task.id}
-                      className={`p-4 flex items-center justify-between ${
-                        index !== upcomingTasks.length - 1 ? "border-b border-gray-100" : ""
-                      }`}
-                    >
-                      <div>
-                        <h3 className="font-medium text-gray-900">{task.name}</h3>
-                        <p className="text-sm text-gray-500">{task.project}</p>
-                      </div>
-                      <div className="flex items-center">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${priorityDetails.color} mr-3`}>
-                          {priorityDetails.text}
+                      
+                      <div className="flex justify-end items-center">
+                        <span className="text-white text-opacity-80 group-hover:text-opacity-100 font-medium flex items-center transition-all duration-300">
+                          Görüntüle <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform duration-300" />
                         </span>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {task.dueDate}
-                        </div>
                       </div>
                     </div>
-                  )
-                })}
+                    
+                    {/* Dekoratif desen */}
+                    <div className="absolute top-0 right-0 -mt-4 -mr-4 w-20 h-20 bg-white bg-opacity-10 rounded-full"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Kurumsal Değerlerimiz */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Kurumsal Değerlerimiz</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+                <div className="flex items-center mb-4">
+                  <div className="p-3 bg-red-100 rounded-lg mr-3">
+                    <HeartPulse className="w-5 h-5 text-red-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">İş Sağlığı</h3>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  Çalışanlarımızın sağlığı ve güvenliği bizim için her şeyden önemlidir.
+                </p>
+                <ul className="space-y-2 mb-4">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Düzenli sağlık kontrolleri</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Ergonomik çalışma alanları</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Stres yönetimi programları</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+                <div className="flex items-center mb-4">
+                  <div className="p-3 bg-blue-100 rounded-lg mr-3">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">İş Güvenliği</h3>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  Sıfır kaza hedefi ile çalışıyoruz. İş güvenliği konusunda taviz vermiyoruz.
+                </p>
+                <ul className="space-y-2 mb-4">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Düzenli güvenlik eğitimleri</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Risk değerlendirme süreçleri</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Güvenlik ekipmanları</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow">
+                <div className="flex items-center mb-4">
+                  <div className="p-3 bg-green-100 rounded-lg mr-3">
+                    <BookOpen className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Mesleki Gelişim</h3>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  Çalışanlarımızın sürekli gelişimini destekliyoruz.
+                </p>
+                <ul className="space-y-2 mb-4">
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Eğitim programları</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Sertifika desteği</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5" />
+                    <span className="text-sm text-gray-600">Mentorluk programları</span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
 
-          {/* Sağ Sütun - Aktiviteler ve Duyurular */}
-          <div className="space-y-8">
-            {/* Duyurular */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Duyurular</h2>
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                {announcements.map((announcement, index) => (
-                  <div
-                    key={announcement.id}
-                    className={`p-4 ${index !== announcements.length - 1 ? "border-b border-gray-100" : ""}`}
-                  >
-                    <div className="flex items-start">
-                      <div
-                        className={`p-2 rounded-lg mr-3 ${
-                          announcement.type === "feature" ? "bg-green-100" : "bg-yellow-100"
-                        }`}
-                      >
-                        {announcement.type === "feature" ? (
-                          <Zap
-                            className={`w-5 h-5 ${
-                              announcement.type === "feature" ? "text-green-600" : "text-yellow-600"
-                            }`}
-                          />
-                        ) : (
-                          <AlertCircle
-                            className={`w-5 h-5 ${
-                              announcement.type === "feature" ? "text-green-600" : "text-yellow-600"
-                            }`}
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{announcement.title}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{announcement.content}</p>
-                        <p className="text-xs text-gray-500 mt-2">{announcement.date}</p>
+          {/* Ayın Elemanı */}
+          {employeeOfMonth && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Ayın Elemanı</h2>
+              <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                  <div className="md:col-span-1 flex flex-col items-center text-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 blur-lg opacity-30"></div>
+                      <img 
+                        src={employeeOfMonth.avatar || employeeOfMonth.image} 
+                        alt={employeeOfMonth.name} 
+                        className="w-40 h-40 rounded-full border-4 border-white shadow-md relative z-10"
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <h3 className="text-xl font-bold text-gray-900">{employeeOfMonth.name}</h3>
+                      <p className="text-gray-600">{employeeOfMonth.role}</p>
+                      
+                      <div className="mt-4 flex items-center justify-center">
+                        <Award className="w-6 h-6 text-yellow-500 mr-2" />
+                        <span className="font-medium text-yellow-600">Ayın Elemanı</span>
                       </div>
                     </div>
                   </div>
-                ))}
+                  
+                  <div className="md:col-span-2">
+                    <div className="bg-gradient-to-r from-gray-50 to-white p-6 rounded-lg border border-gray-100">
+                      <p className="text-gray-700 mb-4">{employeeOfMonth.description}</p>
+                      
+                      <h4 className="font-medium text-gray-900 mb-3">Başarıları:</h4>
+                      <ul className="space-y-2">
+                        {employeeOfMonth.achievements.map((achievement, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                            <span className="text-gray-700">{achievement}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Son Aktiviteler */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Son Aktiviteler</h2>
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-                {recentActivities.map((activity, index) => (
-                  <div
-                    key={activity.id}
-                    className={`p-4 ${index !== recentActivities.length - 1 ? "border-b border-gray-100" : ""}`}
+          {/* Önemli Duyurular */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Önemli Duyurular</h2>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+              <div className="flex items-start">
+                <div className="bg-blue-100 p-3 rounded-full mr-4">
+                  <Zap className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">İSG Eğitimi: İş Güvenliği Farkındalık Haftası</h3>
+                  <p className="text-gray-700 mb-4">
+                    25-29 Nisan tarihleri arasında düzenlenecek olan İş Güvenliği Farkındalık Haftası kapsamında
+                    tüm çalışanlarımıza özel eğitimler verilecektir. Katılımınız zorunludur.
+                  </p>
+                  <button 
+                    onClick={() => navigate("/announcements")}
+                    className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
                   >
-                    <div className="flex items-start">
-                      <img
-                        src={activity.avatar || "/placeholder.svg"}
-                        alt={activity.user}
-                        className="w-10 h-10 rounded-full mr-3"
-                      />
-                      <div>
-                        <p className="text-sm">
-                          <span className="font-medium">{activity.user}</span> {activity.action}{" "}
-                          <span className="font-medium">{activity.target}</span>
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {activity.project} • {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div className="p-3 text-center border-t border-gray-100">
-                  <button
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    onClick={() => handleNavigate("/activities")}
-                  >
-                    Tüm Aktiviteleri Gör
+                    Detayları Gör <ChevronRight className="w-4 h-4 ml-1" />
                   </button>
                 </div>
               </div>
             </div>
+          </div>
+          
+          {/* Footer */}
+          <div className="mt-16 text-center text-gray-500 text-sm">
+            <p>© 2025 Stajyerler. Tüm hakları saklıdır.</p>
+          </div>
+        </div>
+      </div>
 
-            {/* Ekip Üyeleri */}
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Ekip Üyeleri</h2>
-              <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-                {isLoading ? (
-                  <div className="flex justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                  </div>
-                ) : error ? (
-                  <div className="text-center py-4 text-red-500">{error}</div>
-                ) : (
-                  <div className="space-y-4">
-                    {teamMembers.slice(0, 3).map((member) => (
-                      <div key={member.id} className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <img
-                            src={member.avatar || "/placeholder.svg"}
-                            alt={member.name}
-                            className="w-10 h-10 rounded-full mr-3"
-                          />
-                          <div>
-                            <p className="font-medium">
-                              {member.name} {member.surname || ""}
-                            </p>
-                            <p className="text-xs text-gray-500">{member.role}</p>
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 text-xs rounded-full ${
-                            member.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {member.role === "admin" ? "Yönetici" : "Üye"}
-                        </span>
+      {/* Çalışanlar Modalı */}
+      {isEmployeeModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto shadow-xl">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Çalışanlar</h3>
+                <button 
+                  onClick={() => setIsEmployeeModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="py-12 flex justify-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+                </div>
+              ) : employees.length === 0 ? (
+                <div className="py-12 text-center text-gray-500">
+                  Çalışan bulunamadı.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {employees.map((employee) => (
+                    <div key={employee.id || employee.user_id} className="flex items-center p-4 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                      <img 
+                        src={employee.avatar} 
+                        alt={employee.name} 
+                        className="w-12 h-12 rounded-full mr-4 border-2 border-white shadow-sm"
+                      />
+                      <div>
+                        <h4 className="font-medium text-gray-900">{employee.name}</h4>
+                        <p className="text-sm text-gray-500">{employee.email}</p>
                       </div>
-                    ))}
-
-                    <div className="text-center pt-2">
-                      <button
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        onClick={() => handleNavigate("/team")}
-                      >
-                        Tüm Ekibi Gör
-                      </button>
+                      {employee.role && (
+                        <span className="ml-auto px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                          {employee.role === "admin" ? "Yönetici" : 
+                           employee.role === "commissioner" ? "Komisyoncu" : "Çalışan"}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-8 flex justify-end">
+                <button 
+                  onClick={() => setIsEmployeeModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Kapat
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Öne Çıkan Projeler */}
-      <div className="max-w-6xl mx-auto mt-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Öne Çıkan Projeler</h2>
-          <button
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-            onClick={() => handleNavigate("/Project/WorkingProject")}
-          >
-            Tüm Projeleri Gör <ChevronRight className="w-4 h-4 ml-1" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
-            <div className="flex items-center mb-3">
-              <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                <Star className="w-5 h-5 text-blue-600" />
-              </div>
-              <h3 className="font-medium text-gray-900">E-Ticaret Web Sitesi</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">Online satış platformu geliştirme projesi</p>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500">İlerleme: 75%</span>
-              <span className="text-gray-500">15 Mayıs 2025</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2 mb-3">
-              <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: "75%" }}></div>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex -space-x-2">
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-              </div>
-              <button
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-                onClick={() => handleNavigate("/project/1")}
-              >
-                Görüntüle <ArrowUpRight className="w-3 h-3 ml-1" />
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
-            <div className="flex items-center mb-3">
-              <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                <MessageSquare className="w-5 h-5 text-purple-600" />
-              </div>
-              <h3 className="font-medium text-gray-900">Mobil Uygulama Geliştirme</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">iOS ve Android için müşteri yönetim uygulaması</p>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500">İlerleme: 45%</span>
-              <span className="text-gray-500">30 Haziran 2025</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2 mb-3">
-              <div className="bg-purple-600 h-1.5 rounded-full" style={{ width: "45%" }}></div>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex -space-x-2">
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-              </div>
-              <button
-                className="text-purple-600 hover:text-purple-800 text-sm font-medium flex items-center"
-                onClick={() => handleNavigate("/project/2")}
-              >
-                Görüntüle <ArrowUpRight className="w-3 h-3 ml-1" />
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5">
-            <div className="flex items-center mb-3">
-              <div className="p-2 bg-green-100 rounded-lg mr-3">
-                <BarChart2 className="w-5 h-5 text-green-600" />
-              </div>
-              <h3 className="font-medium text-gray-900">Veri Analizi ve Raporlama</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">Müşteri davranışları analiz ve raporlama platformu</p>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500">İlerleme: 55%</span>
-              <span className="text-gray-500">20 Haziran 2025</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2 mb-3">
-              <div className="bg-green-600 h-1.5 rounded-full" style={{ width: "55%" }}></div>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex -space-x-2">
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-                <img
-                  src="/placeholder.svg?height=24&width=24"
-                  alt="User"
-                  className="w-6 h-6 rounded-full border-2 border-white"
-                />
-              </div>
-              <button
-                className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center"
-                onClick={() => handleNavigate("/project/3")}
-              >
-                Görüntüle <ArrowUpRight className="w-3 h-3 ml-1" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="mt-16 text-center text-gray-500 text-sm">
-        <p>© 2025 Stajyerler. Tüm hakları saklıdır.</p>
-      </div>
+      )}
     </div>
   )
 }
-

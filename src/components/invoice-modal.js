@@ -1,3 +1,4 @@
+// src/components/invoice-modal.js
 "use client"
 
 import { X, FileText, DollarSign, CreditCard, Download, Printer, Mail, CheckCircle, AlertCircle } from "lucide-react"
@@ -7,79 +8,103 @@ export function InvoiceModal({ isOpen, onClose, project }) {
 
   // Fatura durumunu belirle
   const getInvoiceStatus = () => {
-    if (!project.hasInvoice) return { status: "beklemede", text: "Beklemede", color: "bg-yellow-100 text-yellow-800" }
-
-    // Örnek olarak rastgele bir durum atayalım (gerçek veriler olmadığı için)
-    const statuses = [
-      { status: "odendi", text: "Ödendi", color: "bg-green-100 text-green-800" },
-      { status: "bekliyor", text: "Ödeme Bekliyor", color: "bg-blue-100 text-blue-800" },
-      { status: "gecikti", text: "Gecikti", color: "bg-red-100 text-red-800" },
-    ]
-
-    // Proje ID'sine göre tutarlı bir durum seçelim
-    const index = project.id % 3
-    return statuses[index]
+    // İlerleme durumuna göre fatura durumunu belirle
+    if (project.progress === 0) return { status: "beklemede", text: "Beklemede", color: "bg-yellow-100 text-yellow-800" }
+    if (project.progress === 100) return { status: "odendi", text: "Ödendi", color: "bg-green-100 text-green-800" }
+    if (project.progress < 30) return { status: "beklemede", text: "Beklemede", color: "bg-yellow-100 text-yellow-800" }
+    if (project.progress >= 30 && project.progress < 70) return { status: "bekliyor", text: "Ödeme Bekliyor", color: "bg-blue-100 text-blue-800" }
+    if (project.progress >= 70 && project.progress < 100) return { status: "gecikti", text: "Gecikti", color: "bg-red-100 text-red-800" }
+    
+    return { status: "bekliyor", text: "Ödeme Bekliyor", color: "bg-blue-100 text-blue-800" }
   }
 
   const invoiceStatus = getInvoiceStatus()
 
   // Fatura numarası oluştur (proje ID'sine göre tutarlı olsun)
-  const invoiceNumber = `INV-${2025}-${project.id.toString().padStart(4, "0")}`
-
+  const invoiceNumber = `INV-${new Date().getFullYear()}-${project.id.toString().padStart(4, "0")}`
+  
+  // Proje başlangıç ve bitiş tarihlerini Date nesnesi olarak hazırla
+  const startDate = project.startTimeRaw ? new Date(project.startTimeRaw) : new Date(project.startDate)
+  const endDate = project.endTimeRaw ? new Date(project.endTimeRaw) : new Date(project.deadline)
+  
   // Fatura tarihi oluştur (proje başlangıç tarihinden 5 gün sonra)
-  const getInvoiceDate = () => {
-    const startDateParts = project.startDate.split(" ")
-    const day = Number.parseInt(startDateParts[0]) + 5
-    return `${day} ${startDateParts[1]} ${startDateParts[2]}`
-  }
-
-  const invoiceDate = getInvoiceDate()
-
+  const invoiceDate = new Date(startDate)
+  invoiceDate.setDate(invoiceDate.getDate() + 5)
+  const invoiceDateFormatted = invoiceDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+  
   // Ödeme tarihi oluştur (fatura tarihinden 30 gün sonra)
-  const getDueDate = () => {
-    const startDateParts = project.startDate.split(" ")
-    const day = Number.parseInt(startDateParts[0]) + 35
-    return `${day} ${startDateParts[1]} ${startDateParts[2]}`
-  }
-
-  const dueDate = getDueDate()
+  const dueDate = new Date(invoiceDate)
+  dueDate.setDate(dueDate.getDate() + 30)
+  const dueDateFormatted = dueDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   // Fatura kalemleri oluştur
   const generateInvoiceItems = () => {
-    // Proje fiyatının %70'i ana hizmet, %20'si ek hizmetler, %10'u diğer
-    const mainServicePrice = Math.round(project.price * 0.7)
-    const additionalServicesPrice = Math.round(project.price * 0.2)
-    const otherServicesPrice = project.price - mainServicePrice - additionalServicesPrice
-
-    return [
-      {
-        id: 1,
-        description: project.name,
-        quantity: 1,
-        unitPrice: mainServicePrice,
-        total: mainServicePrice,
-      },
-      {
+    const items = []
+    
+    // Ana hizmet kalemini ekle (ana proje)
+    items.push({
+      id: 1,
+      description: project.name,
+      quantity: 1,
+      unitPrice: Math.round(project.price * 0.7),
+      total: Math.round(project.price * 0.7)
+    })
+    
+    // Çalışanlar için alt hizmet kalemleri ekle
+    if (project.workers && project.workers.length > 0) {
+      const workerServicePrice = Math.round(project.price * 0.2 / project.workers.length)
+      
+      project.workers.forEach((worker, index) => {
+        items.push({
+          id: index + 2,
+          description: `${worker.name} - İş Gücü`,
+          quantity: 1,
+          unitPrice: workerServicePrice,
+          total: workerServicePrice
+        })
+      })
+    } else {
+      // Eğer çalışan yoksa, genel bir hizmet kalemi ekle
+      items.push({
         id: 2,
-        description: "Ek Hizmetler",
+        description: "İş Gücü",
         quantity: 1,
-        unitPrice: additionalServicesPrice,
-        total: additionalServicesPrice,
-      },
-      {
-        id: 3,
+        unitPrice: Math.round(project.price * 0.2),
+        total: Math.round(project.price * 0.2)
+      })
+    }
+    
+    // Komisyoncular için komisyon kalemleri ekle
+    if (project.commissioners && project.commissioners.length > 0) {
+      project.commissioners.forEach((commissioner, index) => {
+        const commissionPrice = commissioner.commission_price || Math.round(project.price * 0.1 / project.commissioners.length)
+        
+        items.push({
+          id: project.workers ? project.workers.length + index + 2 : index + 3,
+          description: `${commissioner.name} - Komisyon`,
+          quantity: 1,
+          unitPrice: commissionPrice,
+          total: commissionPrice
+        })
+      })
+    } else {
+      // Eğer komisyoncu yoksa, diğer hizmetler kalemi ekle
+      items.push({
+        id: project.workers ? project.workers.length + 2 : 3,
         description: "Diğer Hizmetler",
         quantity: 1,
-        unitPrice: otherServicesPrice,
-        total: otherServicesPrice,
-      },
-    ]
+        unitPrice: Math.round(project.price * 0.1),
+        total: Math.round(project.price * 0.1)
+      })
+    }
+    
+    return items
   }
 
   const invoiceItems = generateInvoiceItems()
 
-  // KDV hesapla (%18)
-  const subtotal = project.price
+  // Toplam tutarları hesapla
+  const subtotal = invoiceItems.reduce((sum, item) => sum + item.total, 0)
   const taxRate = 18
   const taxAmount = Math.round(subtotal * (taxRate / 100))
   const total = subtotal + taxAmount
@@ -92,7 +117,7 @@ export function InvoiceModal({ isOpen, onClose, project }) {
       return [
         {
           id: 1,
-          date: dueDate,
+          date: dueDateFormatted,
           amount: total,
           method: "Banka Havalesi",
           status: "Tamamlandı",
@@ -105,19 +130,32 @@ export function InvoiceModal({ isOpen, onClose, project }) {
     }
 
     if (invoiceStatus.status === "gecikti") {
+      const partialPaymentDate = new Date(dueDate)
+      partialPaymentDate.setDate(partialPaymentDate.getDate() - 15)
+      
       return [
         {
           id: 1,
-          date: getDueDate().replace(getDueDate().split(" ")[0], Number.parseInt(getDueDate().split(" ")[0]) - 15),
+          date: partialPaymentDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }),
           amount: Math.round(total * 0.3),
           method: "Kredi Kartı",
           status: "Tamamlandı",
         },
       ]
     }
+    
+    return []
   }
 
   const paymentHistory = generatePaymentHistory()
+
+  // Sağlayıcı bilgilerini belirle
+  const getContractorInfo = () => {
+    if (project.workers && project.workers.length > 0) {
+      return project.workers[0].name
+    }
+    return project.contractor || "Belirtilmedi"
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -158,11 +196,11 @@ export function InvoiceModal({ isOpen, onClose, project }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Fatura Tarihi:</span>
-                  <span className="font-medium">{invoiceDate}</span>
+                  <span className="font-medium">{invoiceDateFormatted}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Son Ödeme Tarihi:</span>
-                  <span className="font-medium">{dueDate}</span>
+                  <span className="font-medium">{dueDateFormatted}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Proje Başlangıç:</span>
@@ -189,7 +227,7 @@ export function InvoiceModal({ isOpen, onClose, project }) {
 
                 <div>
                   <h5 className="text-sm font-medium text-gray-700">Sağlayıcı</h5>
-                  <p className="text-gray-600">{project.contractor}</p>
+                  <p className="text-gray-600">{getContractorInfo()}</p>
                   <p className="text-gray-600">Teknoloji Mah. Yazılım Cad. No:456</p>
                   <p className="text-gray-600">İstanbul, Türkiye</p>
                   <p className="text-gray-600">Vergi No: 0987654321</p>
@@ -265,153 +303,136 @@ export function InvoiceModal({ isOpen, onClose, project }) {
             </div>
           </div>
 
-          {/* Ödeme Bilgileri */}
+          {/* Ödeme Geçmişi */}
           <div className="mb-8">
-            <h4 className="text-sm font-medium text-gray-700 mb-4">Ödeme Bilgileri</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-4">Ödeme Geçmişi</h4>
 
-            <div className="bg-gray-50 p-4 rounded-lg mb-4">
-              <div className="flex items-center mb-4">
-                <DollarSign className="w-5 h-5 text-gray-700 mr-2" />
-                <h5 className="text-sm font-medium text-gray-700">Ödeme Detayları</h5>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Toplam Tutar:</span>
-                  <span className="font-medium">{total.toLocaleString("tr-TR")} ₺</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Ödenen Tutar:</span>
-                  <span className="font-medium">
-                    {paymentHistory.reduce((sum, payment) => sum + payment.amount, 0).toLocaleString("tr-TR")} ₺
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Kalan Tutar:</span>
-                  <span className="font-medium">
-                    {(total - paymentHistory.reduce((sum, payment) => sum + payment.amount, 0)).toLocaleString("tr-TR")}{" "}
-                    ₺
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Son Ödeme Tarihi:</span>
-                  <span className="font-medium">{dueDate}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Ödeme Geçmişi */}
-            {paymentHistory.length > 0 && (
-              <div>
-                <h5 className="text-sm font-medium text-gray-700 mb-2">Ödeme Geçmişi</h5>
-                <div className="space-y-2">
-                  {paymentHistory.map((payment) => (
-                    <div key={payment.id} className="flex justify-between items-center p-3 bg-white rounded-lg border">
-                      <div className="flex items-center">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        <div>
-                          <p className="font-medium">{payment.amount.toLocaleString("tr-TR")} ₺</p>
-                          <p className="text-xs text-gray-500">
-                            {payment.date} - {payment.method}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                        {payment.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Ödeme Yöntemleri */}
-            <div className="mt-4">
-              <h5 className="text-sm font-medium text-gray-700 mb-2">Ödeme Yöntemleri</h5>
-              <div className="bg-white p-3 rounded-lg border">
-                <div className="space-y-3">
-                  <div>
-                    <p className="font-medium">Banka Havalesi</p>
-                    <p className="text-sm text-gray-600">Banka: Örnek Bank</p>
-                    <p className="text-sm text-gray-600">IBAN: TR12 3456 7890 1234 5678 9012 34</p>
-                    <p className="text-sm text-gray-600">Hesap Sahibi: {project.contractor}</p>
-                  </div>
-
-                  <div className="pt-2 border-t">
-                    <p className="font-medium">Kredi Kartı</p>
-                    <p className="text-sm text-gray-600">
-                      Güvenli ödeme sayfasından kredi kartı ile ödeme yapabilirsiniz.
-                    </p>
-                    <button className="mt-2 flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 rounded-md hover:bg-blue-100">
-                      <CreditCard className="w-4 h-4 mr-1" />
-                      Ödeme Yap
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Notlar ve Şartlar */}
-          <div className="mb-8">
-            <h4 className="text-sm font-medium text-gray-700 mb-4">Notlar ve Şartlar</h4>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="space-y-4">
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700">Ödeme Şartları</h5>
-                  <p className="text-sm text-gray-600">
-                    Fatura tutarı, belirtilen son ödeme tarihine kadar ödenmelidir. Geç ödemeler için %2 aylık gecikme
-                    faizi uygulanacaktır.
+            {paymentHistory.length === 0 ? (
+              <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
+                {invoiceStatus.status === "beklemede" ? (
+                  <p className="flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 mr-2 text-yellow-500" />
+                    Fatura henüz ödeme için hazır değil.
                   </p>
-                </div>
-
-                <div>
-                  <h5 className="text-sm font-medium text-gray-700">Notlar</h5>
-                  <p className="text-sm text-gray-600">
-                    Bu fatura, {project.name} projesi için düzenlenmiştir. Proje kapsamı ve detayları için sözleşmeye
-                    bakınız.
+                ) : (
+                  <p className="flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 mr-2 text-blue-500" />
+                    Henüz ödeme yapılmadı.
                   </p>
-                </div>
-
-                {invoiceStatus.status === "gecikti" && (
-                  <div className="flex items-start p-3 bg-red-50 rounded-lg border border-red-200">
-                    <AlertCircle className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h5 className="text-sm font-medium text-red-800">Gecikmiş Ödeme Uyarısı</h5>
-                      <p className="text-sm text-red-700">
-                        Bu faturanın son ödeme tarihi geçmiştir. Lütfen en kısa sürede ödeme yapınız.
-                      </p>
-                    </div>
-                  </div>
                 )}
               </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Tarih
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Tutar
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Ödeme Yöntemi
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Durum
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paymentHistory.map((payment) => (
+                      <tr key={payment.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{payment.date}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium text-right">
+                          {payment.amount.toLocaleString("tr-TR")} ₺
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex items-center">
+                            {payment.method === "Banka Havalesi" ? (
+                              <CreditCard className="w-4 h-4 mr-2 text-blue-500" />
+                            ) : (
+                              <CreditCard className="w-4 h-4 mr-2 text-purple-500" />
+                            )}
+                            {payment.method}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-800">
+                          <div className="flex items-center">
+                            <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                            {payment.status}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Toplam Durumu */}
+          <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 mb-4">Ödeme Durumu Özeti</h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-3 bg-white rounded-lg shadow-sm border border-gray-200">
+                <p className="text-sm text-gray-500 mb-1">Toplam Tutar</p>
+                <p className="text-xl font-bold">{total.toLocaleString("tr-TR")} ₺</p>
+              </div>
+
+              <div className="p-3 bg-white rounded-lg shadow-sm border border-gray-200">
+                <p className="text-sm text-gray-500 mb-1">Ödenen</p>
+                <p className="text-xl font-bold">
+                  {paymentHistory.reduce((sum, payment) => sum + payment.amount, 0).toLocaleString("tr-TR")} ₺
+                </p>
+              </div>
+
+              <div className="p-3 bg-white rounded-lg shadow-sm border border-gray-200">
+                <p className="text-sm text-gray-500 mb-1">Kalan</p>
+                <p className="text-xl font-bold">
+                  {(total - paymentHistory.reduce((sum, payment) => sum + payment.amount, 0)).toLocaleString("tr-TR")} ₺
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-gray-50 px-6 py-4 flex justify-between border-t">
-          <div className="flex space-x-2">
-            <button className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          {/* Fatura Düğmeleri */}
+          <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-gray-200">
+            <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
               <Download className="w-4 h-4 mr-2" />
-              İndir
+              PDF İndir
             </button>
-            <button className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
               <Printer className="w-4 h-4 mr-2" />
               Yazdır
             </button>
-            <button className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+            <button className="flex items-center px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors">
               <Mail className="w-4 h-4 mr-2" />
               E-posta Gönder
             </button>
-          </div>
 
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-            Kapat
-          </button>
+            {invoiceStatus.status === "bekliyor" && (
+              <button className="flex items-center ml-auto px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
+                <CreditCard className="w-4 h-4 mr-2" />
+                Ödeme Yap
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
 }
-
