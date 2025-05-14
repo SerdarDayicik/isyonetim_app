@@ -66,6 +66,21 @@ export function ProjectCreate() {
   // AuthContext'ten token alınması
   const { token } = useContext(AuthContext)
 
+  // Öncelikle tarih aralıklarını hesaplayan yardımcı fonksiyonlar ekleyelim
+  const getFormattedDate = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Bugünün tarihini al
+  const today = getFormattedDate(new Date());
+
+  // Maksimum 10 yıl sonraki tarihi hesapla
+  const maxDate = getFormattedDate(new Date(new Date().setFullYear(new Date().getFullYear() + 10)));
+
   // API'den kullanıcıları çek
   useEffect(() => {
     const fetchUsers = async () => {
@@ -73,23 +88,29 @@ export function ProjectCreate() {
         const response = await fetch(`${API_KEY}/User/get_users`)
         if (response.ok) {
           const data = await response.json()
-          // Her kullanıcıya id ekle
-          const usersWithId = data.map((user, index) => ({
+          // Her kullanıcıya id ekle ve verileri düzgün string formatına dönüştür
+          const usersWithId = data.map((user) => ({
             ...user,
-            id: user.id || index + 1,
-            avatar:
-              user.profile_photo_url ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random`,
-            role: user.role || "Kullanıcı", // Varsayılan rol
-            company: user.company || "Şirket Belirtilmedi", // Varsayılan şirket
+            id: user.id, // API'den gelen id değerini kullan
+            name: String(user.name || ""), // String'e dönüştür
+            surname: String(user.surname || ""),
+            fullName: `${user.name || ""} ${user.surname || ""}`.trim(), // Tam adını oluştur
+            email: String(user.email || ""),
+            phone: String(user.phone || ""),
+            role: String(user.role || "Kullanıcı"),
+            avatar: user.profile_photo_url || 
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(`${user.name || ""} ${user.surname || ""}`)}&background=random`,
+            company: "Şirket Belirtilmedi" // Varsayılan şirket
           }))
+          
+          console.log("Düzenlenmiş kullanıcı verileri:", usersWithId)
           setUsers(usersWithId)
         } else {
-          console.error("Failed to fetch users")
+          console.error("Kullanıcıları getirirken hata oluştu")
           toast.error("Kullanıcı listesi yüklenemedi!")
         }
       } catch (error) {
-        console.error("Error fetching users:", error)
+        console.error("Kullanıcıları getirirken hata:", error)
         toast.error("Kullanıcı listesi yüklenemedi!")
       }
     }
@@ -158,43 +179,110 @@ export function ProjectCreate() {
   // Filtrelenmiş ekip üyeleri
   const filteredTeamMembers = users.filter(
     (member) =>
-      (member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (member.role && member.role.toLowerCase().includes(searchTerm.toLowerCase()))) &&
-      !selectedTeamMembers.some((m) => m.id === member.id),
+      ((member.name && typeof member.name === 'string' && member.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+       (member.surname && typeof member.surname === 'string' && member.surname.toLowerCase().includes(searchTerm.toLowerCase())) ||
+       (member.fullName && typeof member.fullName === 'string' && member.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+       (member.role && typeof member.role === 'string' && member.role.toLowerCase().includes(searchTerm.toLowerCase()))) &&
+      !selectedTeamMembers.some((m) => m.id === member.id)
   )
 
-  // Filtrelenmiş komisyoncu listesi için hesaplama ekleyin
+  // Filtrelenmiş komisyoncu listesi
   const filteredBrokers = users.filter(
     (broker) =>
-      (broker.name.toLowerCase().includes(brokerSearchTerm.toLowerCase()) ||
-        (broker.company && broker.company.toLowerCase().includes(brokerSearchTerm.toLowerCase()))) &&
-      (!selectedBroker || broker.id !== selectedBroker.id),
+      ((broker.name && typeof broker.name === 'string' && broker.name.toLowerCase().includes(brokerSearchTerm.toLowerCase())) ||
+       (broker.surname && typeof broker.surname === 'string' && broker.surname.toLowerCase().includes(brokerSearchTerm.toLowerCase())) ||
+       (broker.fullName && typeof broker.fullName === 'string' && broker.fullName.toLowerCase().includes(brokerSearchTerm.toLowerCase())) ||
+       (broker.company && typeof broker.company === 'string' && broker.company.toLowerCase().includes(brokerSearchTerm.toLowerCase()))) &&
+      (!selectedBroker || broker.id !== selectedBroker.id)
   )
 
   // Filtrelenmiş müşteriler
   const filteredClients = users.filter(
     (client) =>
-      (client.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
-        (client.company && client.company.toLowerCase().includes(clientSearchTerm.toLowerCase())))
+      ((client.name && typeof client.name === 'string' && client.name.toLowerCase().includes(clientSearchTerm.toLowerCase())) ||
+       (client.surname && typeof client.surname === 'string' && client.surname.toLowerCase().includes(clientSearchTerm.toLowerCase())) ||
+       (client.fullName && typeof client.fullName === 'string' && client.fullName.toLowerCase().includes(clientSearchTerm.toLowerCase())) ||
+       (client.company && typeof client.company === 'string' && client.company.toLowerCase().includes(clientSearchTerm.toLowerCase())))
   )
 
-  const validateForm = () => {
-    const newErrors = {}
-
-    if (!formData.projectName.trim()) newErrors.projectName = "Proje adı gereklidir"
-    if (!formData.description.trim()) newErrors.description = "Proje açıklaması gereklidir"
-    if (!formData.client.trim()) newErrors.client = "Müşteri adı gereklidir"
-    if (!formData.startDate) newErrors.startDate = "Başlangıç tarihi gereklidir"
-    if (!formData.deadline) newErrors.deadline = "Bitiş tarihi gereklidir"
-    if (formData.startDate && formData.deadline && new Date(formData.startDate) > new Date(formData.deadline)) {
-      newErrors.deadline = "Bitiş tarihi başlangıç tarihinden sonra olmalıdır"
+  // Tarihleri doğrulayan fonksiyonu güncelleyelim
+  const validateDates = (startDate, endDate, errorMessages = {}) => {
+    if (!startDate) {
+      errorMessages.startDate = "Başlangıç tarihi gereklidir";
     }
-    if (!formData.budget.trim()) newErrors.budget = "Bütçe gereklidir"
-    if (isNaN(Number(formData.budget))) newErrors.budget = "Bütçe sayısal bir değer olmalıdır"
+    
+    if (!endDate) {
+      errorMessages.endDate = "Bitiş tarihi gereklidir";
+    } else if (startDate) {
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      
+      if (endDateObj < startDateObj) {
+        errorMessages.endDate = "Bitiş tarihi başlangıç tarihinden önce olamaz";
+      }
+    }
+    
+    return errorMessages;
+  };
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+  // Proje form doğrulama fonksiyonunu güncelle
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.projectName.trim()) newErrors.projectName = "Proje adı gereklidir";
+    if (!formData.description.trim()) newErrors.description = "Proje açıklaması gereklidir";
+    if (!formData.client.trim()) newErrors.client = "Müşteri adı gereklidir";
+    
+    // Tarih doğrulama
+    validateDates(formData.startDate, formData.deadline, newErrors);
+    
+    if (!formData.budget.trim()) newErrors.budget = "Bütçe gereklidir";
+    if (isNaN(Number(formData.budget))) newErrors.budget = "Bütçe sayısal bir değer olmalıdır";
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Görev doğrulama fonksiyonunu güncelle
+  const validateTask = (task) => {
+    const errors = [];
+    if (!task.name.trim()) errors.push("Görev adı boş bırakılamaz");
+    if (!task.description || !task.description.trim()) errors.push("Görev açıklaması boş bırakılamaz");
+    
+    // Tarih doğrulama
+    const dateErrors = {};
+    validateDates(task.startDate, task.endDate, dateErrors);
+    
+    if (dateErrors.startDate) errors.push(`Görev: ${dateErrors.startDate}`);
+    if (dateErrors.endDate) errors.push(`Görev: ${dateErrors.endDate}`);
+    
+    // Alt görevleri kontrol et
+    if (task.subtasks && task.subtasks.length > 0) {
+      task.subtasks.forEach((subtask, index) => {
+        if (!subtask.name.trim()) errors.push(`Alt görev #${index+1}: Ad boş bırakılamaz`);
+        if (!subtask.description || !subtask.description.trim()) errors.push(`Alt görev #${index+1}: Açıklama boş bırakılamaz`);
+        if (!subtask.assignee) errors.push(`Alt görev #${index+1}: Görevli seçilmelidir`);
+        
+        // Alt görev tarih doğrulama
+        const subtaskDateErrors = {};
+        validateDates(subtask.startDate, subtask.endDate, subtaskDateErrors);
+        
+        if (subtaskDateErrors.startDate) errors.push(`Alt görev #${index+1}: ${subtaskDateErrors.startDate}`);
+        if (subtaskDateErrors.endDate) errors.push(`Alt görev #${index+1}: ${subtaskDateErrors.endDate}`);
+        
+        // Yalnızca alt görev bitiş tarihi görev bitiş tarihini geçmesin
+        if (subtask.endDate && task.endDate) {
+          const subtaskEnd = new Date(subtask.endDate);
+          const taskEnd = new Date(task.endDate);
+          if (subtaskEnd > taskEnd) {
+            errors.push(`Alt görev #${index+1}: Bitiş tarihi görev bitiş tarihinden sonra olamaz`);
+          }
+        }
+      });
+    }
+    
+    return errors;
+  };
 
   // Butonun disabled durumunu kontrol etmek için yeni bir fonksiyon ekleyin
   // validateForm fonksiyonundan sonra ve handleSubmit fonksiyonundan önce ekleyin:
@@ -213,10 +301,152 @@ export function ProjectCreate() {
     )
   }
 
+  // Sonra handleAddTask fonksiyonunu güncelleyelim
+  const handleAddTask = () => {
+    if (!newTaskName.trim()) return;
+    
+    const newTask = {
+      name: newTaskName,
+      description: newTaskDescription,
+      difficulty: newTaskDifficulty,
+      startDate: newTaskStartDate,
+      endDate: newTaskEndDate,
+      subtasks: newSubtasks.filter(subtask => subtask.name.trim() !== "")
+    };
+    
+    // Görev ve alt görevleri doğrula
+    const validationErrors = validateTask(newTask);
+    
+    if (validationErrors.length > 0) {
+      // Hataları göster
+      toast.error(
+        <div>
+          <p className="font-bold mb-2">Lütfen aşağıdaki alanları doldurun:</p>
+          <ul className="list-disc pl-5">
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>,
+        {
+          autoClose: 5000, // 5 saniye göster
+          closeOnClick: true,
+        }
+      );
+      return;
+    }
+    
+    const updatedTasks = [...tasks, newTask];
+    setTasks(updatedTasks);
+    setFormData(prev => ({ ...prev, tasks: updatedTasks }));
+    
+    // Form temizleme
+    setNewTaskName("");
+    setNewTaskDescription("");
+    setNewTaskDifficulty("orta");
+    setNewTaskStartDate("");
+    setNewTaskEndDate("");
+    setNewSubtasks([{ 
+      name: "", 
+      assignee: null,
+      description: "",
+      startDate: "",
+      endDate: "",
+      difficulty: "orta"
+    }]);
+  };
+
+  // Alt görev eklemek için fonksiyon
+  const handleAddSubtask = () => {
+    setNewSubtasks([...newSubtasks, { 
+      name: "", 
+      assignee: null,
+      description: "",
+      startDate: "",
+      endDate: "",
+      difficulty: "orta"
+    }])
+  }
+
+  // Alt görev değişimini izlemek için fonksiyon
+  const handleSubtaskChange = (index, field, value) => {
+    const updatedSubtasks = [...newSubtasks]
+    updatedSubtasks[index][field] = value
+    setNewSubtasks(updatedSubtasks)
+  }
+
+  // Alt görev silme fonksiyonu
+  const handleRemoveSubtask = (index) => {
+    const updatedSubtasks = [...newSubtasks]
+    updatedSubtasks.splice(index, 1)
+    setNewSubtasks(updatedSubtasks)
+  }
+
+  // Görev silme fonksiyonu
+  const handleRemoveTask = (index) => {
+    const updatedTasks = [...tasks]
+    updatedTasks.splice(index, 1)
+    setTasks(updatedTasks)
+    setFormData(prev => ({ ...prev, tasks: updatedTasks }))
+  }
+
+  // Zorluk renklerini ve metinlerini belirle
+  const getDifficultyDetails = (difficulty) => {
+    switch (difficulty) {
+      case "kolay":
+        return { color: "bg-green-100 text-green-800", text: "Kolay" }
+      case "orta":
+        return { color: "bg-blue-100 text-blue-800", text: "Orta" }
+      case "zor":
+        return { color: "bg-orange-100 text-orange-800", text: "Zor" }
+      default:
+        return { color: "bg-gray-100 text-gray-800", text: "Belirsiz" }
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (!validateForm()) return
+
+    // Görevleri doğrula
+    if (tasks.length > 0) {
+      const taskErrors = []
+      
+      tasks.forEach((task, taskIndex) => {
+        const errors = validateTask(task)
+        if (errors.length > 0) {
+          taskErrors.push({
+            taskName: task.name,
+            errors: errors
+          })
+        }
+      })
+      
+      if (taskErrors.length > 0) {
+        // Görevlerde hata var, uyarı göster
+        toast.error(
+          <div>
+            <p className="font-bold mb-2">Görevlerde eksik bilgiler var:</p>
+            {taskErrors.map((taskError, index) => (
+              <div key={index} className="mb-2">
+                <p className="font-semibold">{taskError.taskName || `Görev #${index+1}`}:</p>
+                <ul className="list-disc pl-5">
+                  {taskError.errors.map((error, errorIndex) => (
+                    <li key={errorIndex}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>,
+          {
+            autoClose: false, // Manuel kapatılana kadar göster
+            closeOnClick: true,
+          }
+        )
+        return
+      }
+    }
 
     setIsLoading(true)
 
@@ -382,10 +612,8 @@ export function ProjectCreate() {
               
               // Alt görev ID'lerini ve atanan kullanıcıları eşleştirme
               if (responseData && responseData.created_subtask_ids && Array.isArray(responseData.created_subtask_ids)) {
-                // Subtask assignment isteklerini toplayalım
                 const subtaskAssignments = [];
                 
-                // taskResults içinde dolaşarak subtask bilgilerini alalım
                 let subtaskIndex = 0;
                 for (const result of taskResults) {
                   if (result.success && result.task.subtasks && result.task.subtasks.length > 0) {
@@ -395,7 +623,16 @@ export function ProjectCreate() {
                         // responseData.created_subtask_ids dizisinde sırasıyla oluşturulan alt görevlerin ID'leri var
                         if (subtaskIndex < responseData.created_subtask_ids.length) {
                           const subtaskId = responseData.created_subtask_ids[subtaskIndex];
-                          const userId = subtask.assignee.id;
+                          
+                          // Kullanıcı ID'sinin sayı olduğundan emin olalım
+                          const userId = Number(subtask.assignee.id);
+                          
+                          console.log("Atamada kullanılacak kullanıcı:", {
+                            assignee: subtask.assignee,
+                            id: subtask.assignee.id,
+                            type: typeof subtask.assignee.id,
+                            parsedId: userId
+                          });
                           
                           subtaskAssignments.push({
                             subtask_id: subtaskId,
@@ -418,6 +655,8 @@ export function ProjectCreate() {
                   const assignmentResults = await Promise.all(
                     subtaskAssignments.map(async (assignment) => {
                       try {
+                        console.log("API'ye gönderilecek atama verisi:", assignment);
+                        
                         const assignmentResponse = await fetch(`${API_KEY}/SubtaskAssignment/create_subtask_assignment`, {
                           method: "POST",
                           headers: {
@@ -503,87 +742,6 @@ export function ProjectCreate() {
   }
 
   const priorityDetails = getPriorityDetails(formData.priority)
-
-  // Görev eklemek için fonksiyon
-  const handleAddTask = () => {
-    if (!newTaskName.trim()) return
-    
-    const newTask = {
-      name: newTaskName,
-      description: newTaskDescription,
-      difficulty: newTaskDifficulty,
-      startDate: newTaskStartDate,
-      endDate: newTaskEndDate,
-      subtasks: newSubtasks.filter(subtask => subtask.name.trim() !== "")
-    }
-    
-    const updatedTasks = [...tasks, newTask]
-    setTasks(updatedTasks)
-    setFormData(prev => ({ ...prev, tasks: updatedTasks }))
-    
-    // Form temizleme
-    setNewTaskName("")
-    setNewTaskDescription("")
-    setNewTaskDifficulty("orta")
-    setNewTaskStartDate("")
-    setNewTaskEndDate("")
-    setNewSubtasks([{ 
-      name: "", 
-      assignee: null,
-      description: "",
-      startDate: "",
-      endDate: "",
-      difficulty: "orta"
-    }])
-  }
-
-  // Alt görev eklemek için fonksiyon
-  const handleAddSubtask = () => {
-    setNewSubtasks([...newSubtasks, { 
-      name: "", 
-      assignee: null,
-      description: "",
-      startDate: "",
-      endDate: "",
-      difficulty: "orta"
-    }])
-  }
-
-  // Alt görev değişimini izlemek için fonksiyon
-  const handleSubtaskChange = (index, field, value) => {
-    const updatedSubtasks = [...newSubtasks]
-    updatedSubtasks[index][field] = value
-    setNewSubtasks(updatedSubtasks)
-  }
-
-  // Alt görev silme fonksiyonu
-  const handleRemoveSubtask = (index) => {
-    const updatedSubtasks = [...newSubtasks]
-    updatedSubtasks.splice(index, 1)
-    setNewSubtasks(updatedSubtasks)
-  }
-
-  // Görev silme fonksiyonu
-  const handleRemoveTask = (index) => {
-    const updatedTasks = [...tasks]
-    updatedTasks.splice(index, 1)
-    setTasks(updatedTasks)
-    setFormData(prev => ({ ...prev, tasks: updatedTasks }))
-  }
-
-  // Zorluk renklerini ve metinlerini belirle
-  const getDifficultyDetails = (difficulty) => {
-    switch (difficulty) {
-      case "kolay":
-        return { color: "bg-green-100 text-green-800", text: "Kolay" }
-      case "orta":
-        return { color: "bg-blue-100 text-blue-800", text: "Orta" }
-      case "zor":
-        return { color: "bg-orange-100 text-orange-800", text: "Zor" }
-      default:
-        return { color: "bg-gray-100 text-gray-800", text: "Belirsiz" }
-    }
-  }
 
   return (
     <div className="p-6 overflow-y-auto">
@@ -996,7 +1154,7 @@ export function ProjectCreate() {
                         
                         <div>
                           <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-700 mb-1">
-                            Görev Açıklaması
+                            Görev Açıklaması <span className="text-red-500">*</span>
                           </label>
                           <textarea
                             id="taskDescription"
@@ -1028,7 +1186,7 @@ export function ProjectCreate() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                         <div>
                           <label htmlFor="taskStartDate" className="block text-sm font-medium text-gray-700 mb-1">
-                            Başlangıç Tarihi
+                            Başlangıç Tarihi <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="date"
@@ -1041,7 +1199,7 @@ export function ProjectCreate() {
                         
                         <div>
                           <label htmlFor="taskEndDate" className="block text-sm font-medium text-gray-700 mb-1">
-                            Bitiş Tarihi
+                            Bitiş Tarihi <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="date"
@@ -1054,7 +1212,10 @@ export function ProjectCreate() {
                       </div>
                       
                       <div className="border-t border-gray-200 pt-4 mt-4">
-                        <h6 className="text-sm font-medium text-gray-700 mb-3">Alt Görevler</h6>
+                        <div className="flex items-center justify-between">
+                          <h6 className="text-sm font-medium text-gray-700 mb-3">Alt Görevler</h6>
+                          <span className="text-xs text-gray-500">Tüm alanlar zorunludur</span>
+                        </div>
                         
                         {/* Alt görevler */}
                         <div className="ml-4 space-y-4 mb-3">
@@ -1089,12 +1250,16 @@ export function ProjectCreate() {
                                 
                                 <div>
                                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Görevli
+                                    Görevli <span className="text-red-500">*</span>
                                   </label>
                                   <select
                                     value={subtask.assignee ? subtask.assignee.id : ""}
                                     onChange={(e) => {
-                                      const selected = users.find(user => user.id === parseInt(e.target.value));
+                                      // String değerini sayıya çevirip kullanıcıyı bulalım
+                                      const userId = parseInt(e.target.value);
+                                      console.log("Seçilen kullanıcı ID:", userId); // Debug için log
+                                      const selected = users.find(user => user.id === userId);
+                                      console.log("Bulunan kullanıcı:", selected); // Debug için log
                                       handleSubtaskChange(index, 'assignee', selected || null);
                                     }}
                                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
@@ -1109,7 +1274,7 @@ export function ProjectCreate() {
                               
                               <div className="mb-2">
                                 <label className="block text-xs font-medium text-gray-700 mb-1">
-                                  Açıklama
+                                  Açıklama <span className="text-red-500">*</span>
                                 </label>
                                 <textarea
                                   value={subtask.description}
@@ -1123,7 +1288,7 @@ export function ProjectCreate() {
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
                                 <div>
                                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Başlangıç Tarihi
+                                    Başlangıç Tarihi <span className="text-red-500">*</span>
                                   </label>
                                   <input
                                     type="date"
@@ -1135,7 +1300,7 @@ export function ProjectCreate() {
                                 
                                 <div>
                                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Bitiş Tarihi
+                                    Bitiş Tarihi <span className="text-red-500">*</span>
                                   </label>
                                   <input
                                     type="date"
@@ -1182,6 +1347,10 @@ export function ProjectCreate() {
                         >
                           + Alt Görev Ekle
                         </button>
+                      </div>
+                      
+                      <div className="text-sm text-gray-500 mt-2 mb-4">
+                        <p>* işaretli alanlar zorunludur. Görevler ve alt görevler için tüm bilgileri eksiksiz girmelisiniz.</p>
                       </div>
                       
                       <div className="mt-5 pt-4 border-t border-gray-200">

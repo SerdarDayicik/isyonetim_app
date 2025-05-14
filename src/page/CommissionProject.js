@@ -11,7 +11,7 @@ import { useCounter } from "../hooks/use-counter"
 import { AnimatedCard } from "../components/animated-card"
 import { useScrollAnimation } from "../hooks/use-scroll-animation"
 import "../globals.css"
-import { Calendar, Clock, FileText, Percent, Search, User, Users } from "lucide-react"
+import { Calendar, Clock, FileText, Percent, Search, User, Users, CheckCircle } from "lucide-react"
 // CommissionModal'ı import edelim
 import { CommissionModal } from "../components/commission-modal"
 
@@ -25,6 +25,8 @@ export default function CommissionProject() {
   // State'e isCommissionModalOpen ekleyelim
   const [isCommissionModalOpen, setIsCommissionModalOpen] = useState(false)
   const { ref: headerRef, isInView: headerInView } = useScrollAnimation()
+  // Yenileme tetikleyicisi için state ekleyelim
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     if (location.state?.message) {
@@ -91,13 +93,21 @@ export default function CommissionProject() {
             if (item.state_id === 1) status = "devam-ediyor";
             else if (item.state_id === 2) status = "tamamlandi";
 
-            // Görev tamamlanma yüzdesini hesapla
+            // Görev sayılarını doğru şekilde al
+            const totalTasks = item.total_task_count || 0;
+            const tasksCompleted = item.completed_task_count || 0;
+            
+            // Görev tamamlanma yüzdesini doğru şekilde hesapla
             let progress = 0;
-            if (item.total_task_count > 0) {
-              progress = Math.round((item.completed_task_count / item.total_task_count) * 100);
+            if (totalTasks > 0) {
+              // Eğer görev varsa, tamamlanan görevlere göre ilerleme hesapla
+              progress = Math.round((tasksCompleted / totalTasks) * 100);
+            } else if (item.state_id === 2) {
+              // Eğer görev yoksa ama proje tamamlandı olarak işaretlenmişse %100 göster
+              progress = 100;
             } else {
-              // Görev yoksa durum ID'sine göre belirle
-              progress = status === "tamamlandi" ? 100 : item.state_id * 25;
+              // Görev yoksa ve tamamlanmamışsa %0 göster
+              progress = 0;
             }
 
             // Komisyon oranını hesapla - direkt oran yerine fiyattan hesapla
@@ -121,17 +131,18 @@ export default function CommissionProject() {
               userCommissionRate: userCommissionRate,
               userCommissionAmount: userCommission ? userCommission.commission_price : 0,
               status: status,
+              state_id: item.state_id, // state_id'yi doğrudan geçirelim
               progress: progress,
               startDate: formattedStartDate,
               deadline: formattedEndDate,
               workerCount: item.worker_count,
-              tasksCompleted: item.completed_task_count,
-              totalTasks: item.total_task_count,
+              tasksCompleted: tasksCompleted,
+              totalTasks: totalTasks,
               // API'den gelen çalışan ve komisyoncu bilgilerini doğrudan kullan
               workers: item.workers || [],
               commissioners: item.commissioners || [],
-              // Ödeme durumu API'den gelmiyor, varsayılan olarak kısmi-ödeme kullanıyoruz
-              paymentStatus: "kısmi-ödeme" 
+              // Ödeme durumu - proje tamamlandıysa ödendi olarak kabul et
+              paymentStatus: progress === 100 ? "ödendi" : "ödenmedi"
             };
           })
 
@@ -158,19 +169,17 @@ export default function CommissionProject() {
       toast.error("Oturum bilgisi bulunamadı")
       setIsLoading(false)
     }
-  }, [token])
+  }, [token, refreshTrigger]) // refreshTrigger'ı bağımlılıklara ekledik
 
-  // Durum renklerini ve metinlerini belirle
-  const getStatusDetails = (status) => {
-    switch (status) {
-      case "devam-ediyor":
+  // Durum renklerini ve metinlerini belirle - state_id değerine göre hesapla
+  const getStatusDetails = (stateId) => {
+    switch (stateId) {
+      case 1:
         return { color: "bg-blue-100 text-blue-800", text: "Devam Ediyor" }
-      case "tamamlandi":
+      case 2:
         return { color: "bg-green-100 text-green-800", text: "Tamamlandı" }
-      case "beklemede":
-        return { color: "bg-yellow-100 text-yellow-800", text: "Beklemede" }
       default:
-        return { color: "bg-gray-100 text-gray-800", text: "Belirsiz" }
+        return { color: "bg-yellow-100 text-yellow-800", text: "Beklemede" }
     }
   }
 
@@ -179,8 +188,6 @@ export default function CommissionProject() {
     switch (status) {
       case "ödendi":
         return { color: "text-green-600", text: "Ödendi" }
-      case "kısmi-ödeme":
-        return { color: "text-orange-600", text: "Kısmi Ödeme" }
       case "ödenmedi":
         return { color: "text-red-600", text: "Ödenmedi" }
       default:
@@ -306,7 +313,6 @@ export default function CommissionProject() {
                 <select className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 transition-all duration-300 focus:shadow-md">
                   <option value="">Tüm Ödemeler</option>
                   <option value="ödendi">Ödenen</option>
-                  <option value="kısmi-ödeme">Kısmi Ödenen</option>
                   <option value="ödenmedi">Ödenmeyen</option>
                 </select>
               </div>
@@ -327,7 +333,7 @@ export default function CommissionProject() {
               </AnimatedCard>
             ) : (
               projects.map((project, index) => {
-                const statusDetails = getStatusDetails(project.status)
+                const statusDetails = getStatusDetails(project.state_id) // state_id değerine göre durum belirle
                 const paymentStatusDetails = getPaymentStatusDetails(project.paymentStatus)
 
                 return (
@@ -340,7 +346,7 @@ export default function CommissionProject() {
                             {statusDetails.text}
                           </span>
 
-                          {project.status !== "tamamlandi" && (
+                          {project.state_id !== 2 && (
                             <div className="flex items-center">
                               <span className="text-sm font-medium text-gray-700 mr-2">{project.progress}%</span>
                               <div className="w-16 bg-gray-200 rounded-full h-1.5">
@@ -378,6 +384,36 @@ export default function CommissionProject() {
                             <span className={`font-medium ${paymentStatusDetails.color}`}>
                               {paymentStatusDetails.text}
                             </span>
+                          </div>
+                        </div>
+
+                        {/* Task Status and Count - Görev Durumu */}
+                        <div className="bg-gray-50 p-3 rounded-lg mb-4 hover:bg-gray-100 transition-colors">
+                          <div className="flex items-center mb-1">
+                            <CheckCircle className="w-4 h-4 text-gray-500 mr-1" />
+                            <span className="text-sm font-medium text-gray-700">Görevler</span>
+                          </div>
+                          <div className="flex flex-col">
+                            {project.totalTasks > 0 ? (
+                              <>
+                                <span className="font-medium">
+                                  {project.tasksCompleted}/{project.totalTasks}
+                                </span>
+                                <div className="flex items-center mt-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mr-2">
+                                    <div
+                                      className="bg-green-600 h-1.5 rounded-full transition-all duration-1000 ease-out"
+                                      style={{ width: `${(project.tasksCompleted / Math.max(1, project.totalTasks)) * 100}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {Math.round((project.tasksCompleted / Math.max(1, project.totalTasks)) * 100)}%
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-sm text-gray-500">Henüz görev tanımlanmamış</span>
+                            )}
                           </div>
                         </div>
 
@@ -447,15 +483,32 @@ export default function CommissionProject() {
       </div>
 
       {/* Proje Detayları Modal */}
-      <ProjectDetailsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} project={selectedProject} />
+      <ProjectDetailsModal 
+        isOpen={isModalOpen} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setRefreshTrigger(prev => prev + 1); // Yenileme tetikleyicisi
+        }} 
+        project={selectedProject} 
+      />
 
       {/* Ekip Bilgileri Modal */}
-      <TeamModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} project={selectedProject} />
+      <TeamModal 
+        isOpen={isTeamModalOpen} 
+        onClose={() => {
+          setIsTeamModalOpen(false);
+          setRefreshTrigger(prev => prev + 1); // Yenileme tetikleyicisi
+        }} 
+        project={selectedProject} 
+      />
 
       {/* Komisyon Bilgileri Modal */}
       <CommissionModal
         isOpen={isCommissionModalOpen}
-        onClose={() => setIsCommissionModalOpen(false)}
+        onClose={() => {
+          setIsCommissionModalOpen(false);
+          setRefreshTrigger(prev => prev + 1); // Yenileme tetikleyicisi
+        }}
         project={selectedProject}
       />
     </div>

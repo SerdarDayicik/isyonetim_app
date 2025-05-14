@@ -24,6 +24,8 @@ import {
   Users,
 } from "lucide-react"
 import { InvoiceModal } from "../components/invoice-modal"
+import { TasksModal } from "../components/task-modal"
+import { SettingsModal } from "../components/settings-modal"
 
 export default function AdministratorProject() {
   const API_KEY = process.env.REACT_APP_API_URL
@@ -37,6 +39,12 @@ export default function AdministratorProject() {
   const [animationTriggered, setAnimationTriggered] = useState(false)
   const { ref: headerRef, isInView: headerInView } = useScrollAnimation()
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
+  const [isTasksModalOpen, setIsTasksModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     if (location.state?.message) {
@@ -91,23 +99,33 @@ export default function AdministratorProject() {
             if (item.state_id === 1) status = "devam-ediyor"
             else if (item.state_id === 2) status = "tamamlandi"
 
-            // İlerleme değerini hesapla
-            const progress = status === "tamamlandi" ? 100 : Math.floor(Math.random() * 80) + 10
+            // API'den gelen görev sayılarını kullan
+            const totalTasks = item.total_task_count || 0
+            const tasksCompleted = item.completed_task_count || 0
+            
+            // İlerleme değerini görev tamamlanma oranına göre hesapla
+            let progress = 0;
+            if (totalTasks > 0) {
+              progress = Math.round((tasksCompleted / totalTasks) * 100);
+            } else if (status === "tamamlandi") {
+              progress = 100;
+            } else if (item.is_completed) {
+              progress = 100;
+            } else {
+              progress = 0;
+            }
 
-            // Öncelik değerini belirle
+            // Öncelik değerini belirle (API'de yoksa rastgele kullanmaya devam edebiliriz)
             const priorities = ["düşük", "orta", "yüksek", "kritik"]
             const randomPriority = priorities[Math.floor(Math.random() * priorities.length)]
 
-            // Bütçe kullanımını hesapla
+            // Bütçe kullanımını hesapla (eğer API'den bu bilgi gelmiyorsa)
             const price = Number(item.price) || 0
             console.log("Proje fiyatı:", price, typeof price)
 
-            const spent = Math.floor(price * (Math.random() * 0.8))
+            // Eğer gerçek harcama verisi yoksa, progress değerini baz alarak bir tahmin yapabiliriz
+            const spent = Math.floor(price * (progress / 100))
             console.log("Harcanan:", spent)
-
-            // Görev tamamlama durumunu hesapla
-            const totalTasks = Math.floor(Math.random() * 50) + 10
-            const tasksCompleted = Math.floor(totalTasks * (progress / 100))
 
             // Ekip büyüklüğünü belirle
             const workers = item.workers || []
@@ -163,7 +181,69 @@ export default function AdministratorProject() {
       toast.error("Oturum bilgisi bulunamadı")
       setIsLoading(false)
     }
-  }, [token])
+  }, [token, refreshTrigger])
+
+  // Proje silme fonksiyonu - hata ayıklama için geliştirildi
+  const deleteProject = async (projectId) => {
+    try {
+      setIsLoading(true);
+      
+      console.log(`${projectId} ID'li proje siliniyor...`);
+      
+      const requestBody = {
+        project_id: projectId,
+        token: token
+      };
+      
+      console.log("İstek gövdesi:", requestBody);
+      
+      const response = await fetch(`${API_KEY}/Project/delete_project`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      const responseText = await response.text();
+      console.log("API yanıtı:", response.status, responseText);
+      
+      if (!response.ok) {
+        let errorMessage;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || "Proje silinirken bir hata oluştu";
+        } catch (e) {
+          errorMessage = `Proje silinirken hata: ${responseText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Başarılı silme işleminden sonra projeleri güncelle
+      setProjects((prevProjects) => prevProjects.filter(project => project.id !== projectId));
+      toast.success("Proje başarıyla silindi");
+      
+    } catch (error) {
+      console.error("Proje silme hatası:", error);
+      toast.error(error.message || "Proje silinirken bir hata oluştu");
+    } finally {
+      setIsLoading(false);
+      setShowDeleteConfirm(false);
+      setProjectToDelete(null);
+    }
+  };
+
+  // Menü açma/kapama işlevi
+  const toggleMenu = (projectId) => {
+    setOpenMenuId(openMenuId === projectId ? null : projectId)
+  }
+
+  // Silme onayı modalını gösterme fonksiyonu
+  const confirmDeleteProject = (project) => {
+    setProjectToDelete(project)
+    setShowDeleteConfirm(true)
+    setOpenMenuId(null) // Menüyü kapat
+  }
 
   // Durum renklerini ve metinlerini belirle
   const getStatusDetails = (status) => {
@@ -205,9 +285,19 @@ export default function AdministratorProject() {
     setIsTeamModalOpen(true)
   }
 
+  const openTasksModal = (project) => {
+    setSelectedProject(project)
+    setIsTasksModalOpen(true)
+  }
+
   const openInvoiceModal = (project) => {
     setSelectedProject(project)
     setIsInvoiceModalOpen(true)
+  }
+
+  const openSettingsModal = (project) => {
+    setSelectedProject(project)
+    setIsSettingsModalOpen(true)
   }
 
   useEffect(() => {
@@ -431,10 +521,36 @@ export default function AdministratorProject() {
                                   {priorityDetails.text}
                                 </span>
                               </div>
-                              <div className="flex items-center">
-                                <button className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                              <div className="flex items-center relative">
+                                <button 
+                                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleMenu(project.id);
+                                  }}
+                                >
                                   <MoreHorizontal className="w-5 h-5 text-gray-500" />
                                 </button>
+                                
+                                {/* Açılır menü */}
+                                {openMenuId === project.id && (
+                                  <div className="absolute right-0 top-8 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                                    <div className="py-1">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          confirmDeleteProject(project);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                                      >
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Projeyi Sil
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -546,13 +662,24 @@ export default function AdministratorProject() {
 
                               <button
                                 className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-all duration-300 hover:scale-105"
+                                onClick={() => openTasksModal(project)}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Görevler
+                              </button>
+
+                              <button
+                                className="flex items-center px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-all duration-300 hover:scale-105"
                                 onClick={() => openInvoiceModal(project)}
                               >
                                 <FileText className="w-4 h-4 mr-1" />
                                 Fatura
                               </button>
 
-                              <button className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-all duration-300 hover:scale-105">
+                              <button
+                                className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-all duration-300 hover:scale-105"
+                                onClick={() => openSettingsModal(project)}
+                              >
                                 <Settings className="w-4 h-4 mr-1" />
                                 Ayarlar
                               </button>
@@ -570,17 +697,91 @@ export default function AdministratorProject() {
       </div>
 
       {/* Proje Detayları Modal */}
-      <ProjectDetailsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} project={selectedProject} />
+      <ProjectDetailsModal 
+        isOpen={isModalOpen} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }} 
+        project={selectedProject} 
+      />
 
       {/* Ekip Bilgileri Modal */}
-      <TeamModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} project={selectedProject} />
+      <TeamModal 
+        isOpen={isTeamModalOpen} 
+        onClose={() => {
+          setIsTeamModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }} 
+        project={selectedProject} 
+      />
 
       {/* Fatura Modal */}
       <InvoiceModal
         isOpen={isInvoiceModalOpen}
-        onClose={() => setIsInvoiceModalOpen(false)}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }}
         project={selectedProject}
       />
+
+      {/* Görevler Modal */}
+      <TasksModal 
+        isOpen={isTasksModalOpen} 
+        onClose={() => {
+          setIsTasksModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }} 
+        project={selectedProject} 
+        role={role}
+      />
+
+      {/* Ayarlar Modalı */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => {
+          setIsSettingsModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }}
+        project={selectedProject}
+      />
+
+      {/* Silme Onayı Modal */}
+      {showDeleteConfirm && projectToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-auto">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Projeyi Silmeyi Onayla</h3>
+            <p className="text-gray-500 mb-4">
+              "{projectToDelete.name}" projesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz ve tüm görevler ve veriler kalıcı olarak silinecektir.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                disabled={isLoading}
+              >
+                İptal
+              </button>
+              <button
+                onClick={() => deleteProject(projectToDelete.id)}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Siliniyor...
+                  </>
+                ) : "Sil"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

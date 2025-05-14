@@ -26,6 +26,7 @@ export default function CustomerPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [filteredProjects, setFilteredProjects] = useState([])
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const API_KEY = process.env.REACT_APP_API_URL
 
@@ -46,7 +47,7 @@ export default function CustomerPage() {
     
     // API'den proje verilerini çek
     fetchCustomerProjects()
-  }, [location.state])
+  }, [location.state, refreshTrigger])
   
   // Proje verilerini API'den çek
   const fetchCustomerProjects = async () => {
@@ -308,14 +309,20 @@ export default function CustomerPage() {
       {/* Proje Detayları Modal */}
       <ProjectDetailsModal
         isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }}
         project={selectedProject}
       />
 
       {/* Fatura Modal */}
       <InvoiceModal
         isOpen={isInvoiceModalOpen}
-        onClose={() => setIsInvoiceModalOpen(false)}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setRefreshTrigger(prev => prev + 1);
+        }}
         project={selectedProject}
       />
     </div>

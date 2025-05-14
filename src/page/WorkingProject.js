@@ -26,6 +26,8 @@ export default function CalisaniOldugum() {
   const [searchTerm, setSearchTerm] = useState("")
   const [animationTriggered, setAnimationTriggered] = useState(false)
   const { ref: headerRef, isInView: headerInView } = useScrollAnimation()
+  // Modallar kapatıldıktan sonra sayfayı yenilemek için tetikleyici değişken
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -37,6 +39,8 @@ export default function CalisaniOldugum() {
           toast.error("Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.")
           return
         }
+
+        setLoading(true) // Veri yükleme başladığında loading durumunu true yap
 
         const response = await fetch(`${API_KEY}/Admin/view_assignment`, {
           method: "POST",
@@ -54,29 +58,48 @@ export default function CalisaniOldugum() {
         console.log("API yanıtı:", data) 
         
         // Transform API data to match our project structure
-        const formattedProjects = data.assigned_projects.map(project => ({
-          id: project.project_id,
-          name: project.project_name,
-          description: project.project_description,
-          price: project.price,
-          budget: project.price,
-          spent: project.price * 0.3, // Varsayılan harcama olarak bütçenin %30'unu kullanıyoruz
-          progress: Math.round(project.total_task_count > 0 ? (project.completed_task_count / project.total_task_count) * 100 : project.state_id * 25),
-          startDate: formatDate(project.start_time),
-          deadline: project.end_time ? formatDate(project.end_time) : "Belirlenmedi",
-          client: "Müşteri", // API'de müşteri bilgisi yok
-          teamSize: project.worker_count,
-          tasksCompleted: project.completed_task_count,
-          totalTasks: project.total_task_count || 1, // Eğer total_task_count 0 ise, en az 1 olarak ayarlayalım
-          lastActivity: "Bugün", // API'de son aktivite bilgisi yok
-          role: "Proje Çalışanı", // Varsayılan rol
-          state_id: project.state_id,
-          is_completed: project.is_completed,
+        const formattedProjects = data.assigned_projects.map(project => {
+          // Görev sayılarını doğru şekilde hesapla
+          const totalTasks = project.total_task_count || 0;
+          const tasksCompleted = project.completed_task_count || 0;
           
-          // Eğer API'den gelen projede workers ve commissioners varsa onları da ekleyelim
-          workers: project.workers || [], // Eğer API workers sunuyorsa
-          commissioners: project.commissioners || [] // Eğer API commissioners sunuyorsa
-        }))
+          // Projenin ilerlemesini doğru şekilde hesapla
+          let progress = 0;
+          if (totalTasks > 0) {
+            // Eğer görev varsa, tamamlanan görevlere göre ilerleme hesapla
+            progress = Math.round((tasksCompleted / totalTasks) * 100);
+          } else if (project.state_id === 2) {
+            // Eğer görev yoksa ama proje tamamlandı olarak işaretlenmişse %100 göster
+            progress = 100;
+          } else {
+            // Görev yoksa ve tamamlanmamışsa %0 göster
+            progress = 0;
+          }
+
+          return {
+            id: project.project_id,
+            name: project.project_name,
+            description: project.project_description,
+            price: project.price,
+            budget: project.price,
+            spent: project.price * (progress / 100), // Harcamayı ilerleme yüzdesine göre hesapla
+            progress: progress,
+            startDate: formatDate(project.start_time),
+            deadline: project.end_time ? formatDate(project.end_time) : "Belirlenmedi",
+            client: "Müşteri", // API'de müşteri bilgisi yok
+            teamSize: project.worker_count,
+            tasksCompleted: tasksCompleted,
+            totalTasks: totalTasks,
+            lastActivity: "Bugün", // API'de son aktivite bilgisi yok
+            role: "Proje Çalışanı", // Varsayılan rol
+            state_id: project.state_id,
+            is_completed: project.is_completed,
+            
+            // Eğer API'den gelen projede workers ve commissioners varsa onları da ekleyelim
+            workers: project.workers || [], // Eğer API workers sunuyorsa
+            commissioners: project.commissioners || [] // Eğer API commissioners sunuyorsa
+          }
+        })
 
         setProjects(formattedProjects)
         setAnimationTriggered(true)
@@ -89,7 +112,7 @@ export default function CalisaniOldugum() {
     }
 
     fetchProjects()
-  }, [])
+  }, [refreshTrigger]) // refreshTrigger değişkenini bağımlılık olarak ekledik
 
   // Helper function to format date
   const formatDate = (dateString) => {
@@ -98,6 +121,18 @@ export default function CalisaniOldugum() {
     const date = new Date(dateString)
     const options = { day: 'numeric', month: 'long', year: 'numeric' }
     return date.toLocaleDateString('tr-TR', options)
+  }
+
+  // Project durumuna göre durum detaylarını getir
+  const getStatusDetails = (stateId) => {
+    switch (stateId) {
+      case 1:
+        return { color: "bg-blue-100 text-blue-800", text: "Devam Ediyor" }
+      case 2:
+        return { color: "bg-green-100 text-green-800", text: "Tamamlandı" }
+      default:
+        return { color: "bg-yellow-100 text-yellow-800", text: "Beklemede" }
+    }
   }
 
   const openProjectDetails = (project) => {
@@ -183,7 +218,10 @@ export default function CalisaniOldugum() {
           ) : (
             /* Project Cards */
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredProjects.map((project, index) => (
+              {filteredProjects.map((project, index) => {
+                const statusDetails = getStatusDetails(project.state_id);
+                
+                return (
                 <AnimatedCard key={project.id} delay={200 + index * 100}>
                   <div
                     className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all duration-300 hover:translate-y-[-5px]"
@@ -191,9 +229,14 @@ export default function CalisaniOldugum() {
                     <div className="p-5">
                       {/* Header with Role and Actions */}
                       <div className="flex justify-between items-start mb-4">
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {project.role}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {project.role}
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDetails.color}`}>
+                            {statusDetails.text}
+                          </span>
+                        </div>
                         <div className="flex items-center">
                           <button className="p-1 hover:bg-gray-100 rounded-full transition-colors">
                             <MoreHorizontal className="w-5 h-5 text-gray-500" />
@@ -248,20 +291,28 @@ export default function CalisaniOldugum() {
                             <span className="text-sm font-medium text-gray-700">Görevler</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="font-medium">
-                              {project.tasksCompleted}/{project.totalTasks}
-                            </span>
-                            <div className="flex items-center mt-1">
-                              <div className="w-full bg-gray-200 rounded-full h-1.5 mr-2">
-                                <div
-                                  className="bg-green-600 h-1.5 rounded-full transition-all duration-1000 ease-out"
-                                  style={{ width: `${(project.tasksCompleted / project.totalTasks) * 100}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-gray-500">
-                                {Math.round((project.tasksCompleted / project.totalTasks) * 100)}%
-                              </span>
-                            </div>
+                            {project.totalTasks > 0 ? (
+                              // Görev varsa tamamlanma durumunu göster
+                              <>
+                                <span className="font-medium">
+                                  {project.tasksCompleted}/{project.totalTasks}
+                                </span>
+                                <div className="flex items-center mt-1">
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5 mr-2">
+                                    <div
+                                      className="bg-green-600 h-1.5 rounded-full transition-all duration-1000 ease-out"
+                                      style={{ width: `${(project.tasksCompleted / Math.max(1, project.totalTasks)) * 100}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {Math.round((project.tasksCompleted / Math.max(1, project.totalTasks)) * 100)}%
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              // Görev yoksa durumu belirt
+                              <span className="text-sm text-gray-500">Henüz görev tanımlanmamış</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -322,7 +373,7 @@ export default function CalisaniOldugum() {
                     </div>
                   </div>
                 </AnimatedCard>
-              ))}
+              )})}
             </div>
           )}
         </div>
@@ -331,18 +382,32 @@ export default function CalisaniOldugum() {
       {/* Proje Detayları Modal */}
       <ProjectDetailsModal
         isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setRefreshTrigger(prev => prev + 1); // Yenileme tetikleyicisi
+        }}
         project={selectedProject}
       />
 
       {/* Ekip Bilgileri Modal */}
-      <TeamModal isOpen={isTeamModalOpen} onClose={() => setIsTeamModalOpen(false)} project={selectedProject} />
+      <TeamModal 
+        isOpen={isTeamModalOpen} 
+        onClose={() => {
+          setIsTeamModalOpen(false);
+          setRefreshTrigger(prev => prev + 1); // Yenileme tetikleyicisi
+        }} 
+        project={selectedProject} 
+      />
 
       {/* Görevler Modal */}
       <TasksModal 
         isOpen={isTasksModalOpen} 
-        onClose={() => setIsTasksModalOpen(false)} 
-        project={selectedProject} 
+        onClose={() => {
+          setIsTasksModalOpen(false);
+          setRefreshTrigger(prev => prev + 1); // Yenileme tetikleyicisi
+        }} 
+        project={selectedProject}
+        role={role} // role değerini geçelim
       />
     </div>
   )

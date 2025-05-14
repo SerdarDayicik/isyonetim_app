@@ -1,15 +1,15 @@
 "use client"
 
 import { Dialog, Transition } from "@headlessui/react"
-import { Fragment, useState } from "react"
-import { Percent, X, DollarSign, Calendar, Clock, User } from "lucide-react"
+import { Fragment, useState, useEffect } from "react"
+import { Percent, X, DollarSign, Calendar, Clock, Users, UserCheck, UserCircle, ArrowRight } from "lucide-react"
 import { AnimatedStats } from "./animated-stats"
 
 export const CommissionModal = ({ isOpen, onClose, project }) => {
   const [animationTriggered, setAnimationTriggered] = useState(false)
 
   // Modal açıldığında animasyonu tetikle
-  useState(() => {
+  useEffect(() => {
     if (isOpen && project) {
       setAnimationTriggered(true)
     } else {
@@ -21,21 +21,15 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
 
   if (!project) return null
 
-  // Ödeme durumu renklerini ve metinlerini belirle
-  const getPaymentStatusDetails = (status) => {
-    switch (status) {
-      case "ödendi":
-        return { color: "text-green-600", text: "Ödendi" }
-      case "kısmi-ödeme":
-        return { color: "text-orange-600", text: "Kısmi Ödeme" }
-      case "ödenmedi":
-        return { color: "text-red-600", text: "Ödenmedi" }
-      default:
-        return { color: "text-gray-600", text: "Belirsiz" }
-    }
-  }
-
-  const paymentStatusDetails = getPaymentStatusDetails(project.paymentStatus || "kısmi-ödeme")
+  // Ödeme durumunu projenin tamamlanma durumuna göre belirle
+  const isProjectCompleted = project.progress === 100
+  
+  // Ödeme durumunu belirle - sadece "ödendi" veya "ödenmedi"
+  const paymentStatus = isProjectCompleted ? "ödendi" : "ödenmedi"
+  
+  // Renk ve metin ayarla
+  const paymentStatusColor = isProjectCompleted ? "text-green-600" : "text-red-600"
+  const paymentStatusText = isProjectCompleted ? "Ödendi" : "Ödenmedi"
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -91,15 +85,20 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
                   leaveFrom="opacity-100 translate-y-0"
                   leaveTo="opacity-0 -translate-y-4"
                 >
-                  <div className="bg-blue-50 rounded-lg p-5 mb-6">
+                  {/* Benim Komisyon Bilgilerim - Öne Çıkarılmış */}
+                  <div className="bg-blue-50 rounded-lg p-5 mb-6 border-2 border-blue-200">
+                    <h4 className="text-sm font-semibold text-blue-700 mb-3 flex items-center">
+                      <UserCheck className="w-4 h-4 mr-1" />
+                      Benim Komisyonum
+                    </h4>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div className="flex items-center">
                         <div className="p-3 bg-blue-100 rounded-full mr-4">
                           <Percent className="h-8 w-8 text-blue-600" />
                         </div>
                         <div>
-                          <h5 className="text-sm font-medium text-gray-500">Komisyon Oranı</h5>
-                          <p className="text-2xl font-bold text-gray-900">%{project.commissionRate}</p>
+                          <h5 className="text-sm font-medium text-gray-500">Komisyon Oranım</h5>
+                          <p className="text-2xl font-bold text-gray-900">%{project.userCommissionRate}</p>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -107,10 +106,10 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
                           <DollarSign className="h-8 w-8 text-green-600" />
                         </div>
                         <div>
-                          <h5 className="text-sm font-medium text-gray-500">Komisyon Tutarı</h5>
+                          <h5 className="text-sm font-medium text-gray-500">Komisyon Tutarım</h5>
                           <p className="text-2xl font-bold text-blue-600">
                             <AnimatedStats
-                              value={project.commissionAmount}
+                              value={project.userCommissionAmount}
                               formatter={(val) => val.toLocaleString("tr-TR") + " ₺"}
                             />
                           </p>
@@ -139,11 +138,11 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
                             <span className="font-medium">{project.totalPrice?.toLocaleString("tr-TR")} ₺</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-500">Komisyon Oranı:</span>
+                            <span className="text-sm text-gray-500">Toplam Komisyon Oranı:</span>
                             <span className="font-medium">%{project.commissionRate}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-500">Komisyon Tutarı:</span>
+                            <span className="text-sm text-gray-500">Toplam Komisyon Tutarı:</span>
                             <span className="font-medium text-blue-600">
                               {project.commissionAmount?.toLocaleString("tr-TR")} ₺
                             </span>
@@ -151,8 +150,8 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
                           <div className="pt-2 border-t border-gray-200">
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-500">Ödeme Durumu:</span>
-                              <span className={`font-medium ${paymentStatusDetails.color}`}>
-                                {paymentStatusDetails.text}
+                              <span className={`font-medium ${paymentStatusColor}`}>
+                                {paymentStatusText}
                               </span>
                             </div>
                           </div>
@@ -173,8 +172,12 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
                             <span className="text-sm">Teslim: {project.deadline}</span>
                           </div>
                           <div className="flex items-center text-gray-700">
-                            <User className="w-5 h-5 mr-2 text-gray-500" />
-                            <span className="text-sm">Müşteri: {project.client}</span>
+                            <Users className="w-5 h-5 mr-2 text-gray-500" />
+                            <span className="text-sm">Çalışan Sayısı: {project.workerCount}</span>
+                          </div>
+                          <div className="flex items-center text-gray-700">
+                            <Percent className="w-5 h-5 mr-2 text-gray-500" />
+                            <span className="text-sm">Komisyoncu Sayısı: {project.commissioners?.length || 0}</span>
                           </div>
                         </div>
                       </div>
@@ -191,27 +194,70 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
                   leaveFrom="opacity-100 translate-y-0"
                   leaveTo="opacity-0 translate-y-4"
                 >
+                  {/* Tüm Komisyoncular */}
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Ödeme Bilgileri</h4>
-                    <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Komisyon Dağılımı</h4>
+                    {project.commissioners && project.commissioners.length > 0 ? (
+                      <div className="space-y-3">
+                        {project.commissioners.map((commissioner, index) => (
+                          <div key={index} className="flex justify-between items-center p-2 hover:bg-gray-100 rounded-md">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                <UserCircle className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{commissioner.name || "Komisyoncu"} {commissioner.surname || `#${index + 1}`}</p>
+                                <p className="text-xs text-gray-500">{commissioner.email || ""}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="text-right mr-2">
+                                <p className="text-sm font-medium">
+                                  {commissioner.commission_price?.toLocaleString("tr-TR")} ₺
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  %{((commissioner.commission_price / project.totalPrice) * 100).toFixed(1)}
+                                </p>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-gray-400" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">Bu projede henüz komisyoncu bulunmuyor.</p>
+                    )}
+                  </div>
+                </Transition>
+
+                <Transition
+                  show={animationTriggered}
+                  enter="transition-all duration-500 delay-300"
+                  enterFrom="opacity-0 translate-y-4"
+                  enterTo="opacity-100 translate-y-0"
+                  leave="transition-all duration-300"
+                  leaveFrom="opacity-100 translate-y-0"
+                  leaveTo="opacity-0 translate-y-4"
+                >
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Proje Durumu</h4>
+                    <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Ödeme Yöntemi:</span>
-                        <span className="font-medium">Banka Transferi</span>
+                        <span className="text-sm text-gray-500">İlerleme:</span>
+                        <div className="flex items-center">
+                          <div className="w-32 bg-gray-200 rounded-full h-2 mr-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-1000 ease-out"
+                              style={{ width: `${project.progress}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">%{project.progress}</span>
+                        </div>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Ödeme Tarihi:</span>
+                        <span className="text-sm text-gray-500">Tamamlanan Görevler:</span>
                         <span className="font-medium">
-                          {project.paymentStatus === "ödendi"
-                            ? "15 Haziran 2025"
-                            : project.paymentStatus === "kısmi-ödeme"
-                              ? "Kısmi ödeme alındı"
-                              : "Bekleniyor"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Fatura Durumu:</span>
-                        <span className="font-medium">
-                          {project.paymentStatus === "ödendi" ? "Kesildi" : "Beklemede"}
+                          {project.tasksCompleted} / {project.totalTasks}
                         </span>
                       </div>
                     </div>
@@ -220,7 +266,7 @@ export const CommissionModal = ({ isOpen, onClose, project }) => {
 
                 <Transition
                   show={animationTriggered}
-                  enter="transition-all duration-500 delay-300"
+                  enter="transition-all duration-500 delay-400"
                   enterFrom="opacity-0 translate-y-4"
                   enterTo="opacity-100 translate-y-0"
                   leave="transition-all duration-300"
